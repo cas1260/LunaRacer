@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#061321">
+    <title>LunaRacer — Corrida</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main id="race-app" data-state="loading">
+      <div
+        id="game-container"
+        role="img"
+        aria-label="Pista de corrida 3D. Use W para acelerar, S para frear ou dar ré e A e D para virar."
+      ></div>
+      <div class="screen-vignette" aria-hidden="true"></div>
+
+      <section class="race-hud" aria-label="Painel da corrida">
+        <section class="position-panel hud-angle" aria-label="Posição na corrida">
+          <div class="hud-label">POSIÇÃO</div>
+          <p class="position-readout"><output id="position-value" aria-label="Posição indisponível">—</output><span>/ <output id="position-total">—</output></span></p>
+          <ol id="position-list" class="position-list" aria-hidden="true">
+            <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
+            <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
+          </ol>
+        </section>
+
+        <section class="time-panel" aria-label="Cronômetro regressivo">
+          <div class="hud-label">TEMPO</div>
+          <output id="timer-value" class="time-readout" aria-label="Tempo restante">58</output>
+          <p id="extend-banner" class="extend-banner" hidden>EXTEND TIME</p>
+        </section>
+
+        <section class="lap-panel hud-angle" aria-label="Tempos e volta">
+          <div class="lap-head">
+            <span class="hud-label">VOLTA</span>
+            <output id="lap-value" class="lap-count" aria-label="Volta atual"><span class="lap-number">00</span><span class="lap-total">/ 03</span></output>
+          </div>
+          <div class="lap-time-row">
+            <span class="hud-label" aria-label="Tempo da volta">ATUAL</span>
+            <output id="lap-time" class="small-time">—:—.---</output>
+          </div>
+          <div class="last-lap-row">
+            <span class="hud-label" aria-label="Última volta">ANT.</span>
+            <output id="last-lap" class="small-time">—</output>
+          </div>
+        </section>
+
+        <section class="speed-panel hud-angle" aria-label="Velocidade do veículo">
+          <div class="hud-label">VELOCIDADE</div>
+          <p class="speed-readout"><output id="speed-value" aria-label="Velocidade indisponível">—</output><span>km/h</span></p>
+          <div class="speed-rule" aria-hidden="true"><span></span></div>
+        </section>
+
+        <section class="map-panel" aria-label="Mapa e dificuldade">
+          <header class="map-heading">
+            <span id="track-name" class="hud-label">INTERLAGOS</span>
+            <span class="map-live"><i aria-hidden="true"></i> AO VIVO</span>
+          </header>
+          <svg id="minimap" class="minimap" viewBox="0 0 240 150" role="img" aria-labelledby="minimap-title minimap-description">
+            <title id="minimap-title">Traçado e posições da corrida em Interlagos</title>
+            <desc id="minimap-description">Mapa esquemático do circuito, com o jogador e os carros rivais nas posições atuais.</desc>
+            <defs>
+              <pattern id="minimap-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M20 0H0V20" fill="none" stroke="#39b9c5" stroke-opacity=".12" stroke-width=".55" />
+              </pattern>
+            </defs>
+            <rect class="map-grid" width="240" height="150" fill="url(#minimap-grid)" />
+            <path id="minimap-track" class="map-track-shadow" d="M77.6 13.9 C85.3 12.2 105.1 12.2 114.7 12 C124.3 11.8 149.6 11.3 159.8 12 C170 12.7 194.5 14.6 202.2 17.6 C209.9 20.6 224.1 32.7 226 37.9 C227.9 43.1 222.4 57 218.1 62 C213.8 67 196.3 77.8 188.9 80.6 C181.5 83.4 160.3 83.1 154.4 86.1 C148.5 89.1 141.1 101.5 138.6 106.5 C136.1 111.5 137.9 125 133.3 128.7 C128.7 132.4 108.1 137.6 98.8 138 C89.5 138.4 62.8 135.4 53.8 132.4 C44.8 129.4 26.5 117.7 21.9 112.1 C17.3 106.5 13.7 91.2 14 84.3 C14.3 77.4 20.6 59.5 24.6 52.8 C28.6 46.1 42.3 31.3 48.5 26.8 C54.7 22.3 69.9 15.6 77.6 13.9 Z" />
+            <path id="minimap-track-line" class="map-track-line" d="M77.6 13.9 C85.3 12.2 105.1 12.2 114.7 12 C124.3 11.8 149.6 11.3 159.8 12 C170 12.7 194.5 14.6 202.2 17.6 C209.9 20.6 224.1 32.7 226 37.9 C227.9 43.1 222.4 57 218.1 62 C213.8 67 196.3 77.8 188.9 80.6 C181.5 83.4 160.3 83.1 154.4 86.1 C148.5 89.1 141.1 101.5 138.6 106.5 C136.1 111.5 137.9 125 133.3 128.7 C128.7 132.4 108.1 137.6 98.8 138 C89.5 138.4 62.8 135.4 53.8 132.4 C44.8 129.4 26.5 117.7 21.9 112.1 C17.3 106.5 13.7 91.2 14 84.3 C14.3 77.4 20.6 59.5 24.6 52.8 C28.6 46.1 42.3 31.3 48.5 26.8 C54.7 22.3 69.9 15.6 77.6 13.9 Z" />
+            <use href="#minimap-track-line" class="map-track-edge" aria-hidden="true" />
+            <use href="#minimap-track-line" class="map-track-flow" aria-hidden="true" />
+            <g id="minimap-cars" aria-hidden="true"></g>
+            <g id="minimap-player" aria-label="Posição do jogador" visibility="hidden">
+              <circle cx="0" cy="0" r="6" />
+            </g>
+          </svg>
+          <div class="map-legend" aria-hidden="true"><span><i class="legend-player"></i> JOGADOR</span><span><i class="legend-rival"></i> RIVAIS</span></div>
+          <div class="map-footer">
+            <span class="hud-label">DIFICULDADE</span>
+            <output id="difficulty-value">—</output>
+          </div>
+        </section>
+
+        <p class="device-status"><span class="status-dot" aria-hidden="true"></span><span id="controller-status">TECLADO · GAMEPAD NÃO ATIVO</span></p>
+        <p class="camera-status"><span class="hud-label">CÂMERA</span><output id="camera-value">TRASEIRA</output></p>
+
+        <details id="diagnostics-panel" class="diagnostics-panel" hidden>
+          <summary>F2 · DIAGNÓSTICO</summary>
+          <pre id="diagnostics-value">Entrada ativa: teclado (W/A/S/D).
+Gamepad e telemetria adicional: indisponíveis nesta integração.</pre>
+        </details>
+
+      </section>
+
+      <p id="race-status" class="race-status" role="status" aria-live="polite" aria-atomic="true" tabindex="-1">
+        Preparando a pista 3D…
+      </p>
+      <output id="checkpoint-value" class="visually-hidden">LARGADA</output>
+      <output id="best-value" class="visually-hidden">—:—.---</output>
+      <ol class="checkpoint-steps visually-hidden" aria-label="Ordem dos checkpoints">
+        <li>L</li><li>01</li><li>02</li><li>03</li>
+      </ol>
+
+      <section id="race-overlay" class="screen-overlay" aria-labelledby="overlay-title" aria-describedby="overlay-copy">
+        <div class="menu-panel hud-angle">
+          <p class="menu-kicker"><span class="status-dot" aria-hidden="true"></span> LUNARACER / INTERLAGOS</p>
+          <h1 id="overlay-title">Pronto para<br><span>a largada?</span></h1>
+          <p id="overlay-copy" class="menu-copy">16 carros. Três voltas. Complete os checkpoints e dispute a posição.</p>
+          <button id="start-button" class="hud-button" type="button" disabled>INICIAR CORRIDA <span aria-hidden="true">↗</span></button>
+          <p class="control-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span class="control-label-pilot">PILOTAR</span><span class="control-help-diagnostics"><span aria-hidden="true">·</span> <kbd>F2</kbd> <span class="control-label-diagnostics">DIAGNÓSTICO</span></span></p>
+        </div>
+      </section>
+
+      <section id="countdown-overlay" class="state-overlay countdown-overlay" aria-label="Contagem regressiva" hidden>
+        <output id="countdown-value" aria-live="assertive">—</output>
+      </section>
+
+      <section id="pause-overlay" class="state-overlay" aria-labelledby="pause-title" hidden>
+        <div class="menu-panel hud-angle">
+          <p class="menu-kicker">CORRIDA PAUSADA</p>
+          <h2 id="pause-title">Pausa</h2>
+          <p class="menu-copy">A corrida e o cronômetro estão pausados.</p>
+          <button id="resume-button" class="hud-button" type="button">RETOMAR</button>
+        </div>
+      </section>
+
+      <section id="results-panel" class="state-overlay results-panel" aria-labelledby="results-title" hidden>
+        <div class="menu-panel hud-angle">
+          <p class="menu-kicker">BANDEIRA QUADRICULADA</p>
+          <h2 id="results-title">Corrida concluída</h2>
+          <dl class="result-stats">
+            <div><dt>POSIÇÃO</dt><dd id="result-position">—</dd></div>
+            <div><dt>TEMPO TOTAL</dt><dd id="result-time">—:—.---</dd></div>
+            <div><dt>MELHOR VOLTA</dt><dd id="result-best">—:—.---</dd></div>
+          </dl>
+          <button id="restart-button" class="hud-button" type="button">CORRER NOVAMENTE <span aria-hidden="true">↗</span></button>
+        </div>
+      </section>
+
+      <details class="settings-panel">
+        <summary><span class="settings-glyph" aria-hidden="true">＋</span> AJUSTES</summary>
+        <div class="settings-content">
+          <p class="settings-heading">AJUSTES DA CORRIDA</p>
+          <div class="menu-settings">
+            <label for="difficulty-select">Dificuldade
+              <select id="difficulty-select" name="difficulty">
+                <option value="easy">Fácil</option>
+                <option value="medium" selected>Médio</option>
+                <option value="hard">Difícil</option>
+              </select>
+            </label>
+            <label for="graphics-select">Gráficos
+              <select id="graphics-select" name="graphics">
+                <option value="low">Baixo</option>
+                <option value="medium" selected>Médio</option>
+                <option value="high">Alto</option>
+              </select>
+            </label>
+            <label for="track-select">Pista
+              <select id="track-select" name="track">
+                <option value="interlagos" selected>Interlagos</option>
+                <option value="costa-azul">Costa Azul</option>
+                <option value="serra-alta">Serra Alta</option>
+                <option value="vale-seco">Vale Seco</option>
+                <option value="porto-ciano">Porto Ciano</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </details>
+
+    </main>
+    <script src="./game.js" defer></script>
+  </body>
+</html>
