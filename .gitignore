@@ -36,4 +36,5 @@ coverage/
 __pycache__/
 **/__pycache__/
 *.pyc
-./docs/
+docs/New Prompt*.md
+docs/memoria-*.md
