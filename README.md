@@ -295,6 +295,7 @@ Este projeto está licenciado sob a **MIT License** — veja o arquivo [LICENSE]
 ---
 
 <p align="center">
-  Feito com ❤️ e Three.js<br>
-  <strong>LunaRacer</strong> — Acelere no navegador.
+  <em>"A linha de chegada é só o começo da próxima volta."</em><br><br>
+  Desenvolvido por <strong>Cleber Soares</strong><br>
+  📧 <a href="mailto:cas1260@gmail.com">cas1260@gmail.com</a>
 </p>
