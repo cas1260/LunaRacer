@@ -375,7 +375,7 @@ select {
   opacity: 0.86;
 }
 
-#minimap-player circle {
+#minimap-player path {
   fill: var(--hud-cyan);
   stroke: #eaffff;
   stroke-width: 1.6;

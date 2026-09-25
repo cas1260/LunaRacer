@@ -100,6 +100,7 @@ const vehicleFactory = createSportsCar;
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 const TRACK_WIDTH = 18;
 const TRACK_HALF_WIDTH = TRACK_WIDTH / 2;
+const AI_LANE_WIDTH_METERS = 3.2;
 let CHECKPOINT_POSITIONS = [0, 0.12, 0.23, 0.34, 0.45, 0.56, 0.67, 0.78, 0.89];
 const BEST_LAP_KEY = "lunaracer.bestLapMs.v1";
 const MAX_SPEED_MPS = 98;
@@ -235,7 +236,12 @@ const materials = {
   stripe: new THREE.MeshStandardMaterial({ color: 0xf1ead6, roughness: 0.85 }),
 };
 
-const selectedTrackId = new URLSearchParams(location.search).get("track") || trackSelect?.value || "interlagos";
+const pageParams = new URLSearchParams(location.search);
+for (const [parameter, select] of [["difficulty", difficultySelect], ["graphics", graphicsSelect]]) {
+  const value = pageParams.get(parameter);
+  if (select && [...select.options].some((option) => option.value === value)) select.value = value;
+}
+const selectedTrackId = pageParams.get("track") || trackSelect?.value || "interlagos";
 const activeTrack = TRACK_CONFIGURATIONS.find((track) => track.id === selectedTrackId) ?? TRACK_CONFIGURATIONS[0];
 if (trackSelect) trackSelect.value = activeTrack.id;
 CHECKPOINT_POSITIONS = activeTrack.checkpoints.map(({ progress }) => progress);
@@ -373,7 +379,7 @@ function addGroundAndRoad() {
     for (let step = 0; step < infieldSteps; step += 1) {
       const a = index * (infieldSteps + 1) + step;
       const b = next * (infieldSteps + 1) + step;
-      infieldIndices.push(a, b, a + 1, a + 1, b, b + 1);
+      infieldIndices.push(a, a + 1, b, a + 1, b + 1, b);
     }
   }
   const infieldGeometry = new THREE.BufferGeometry();
@@ -517,11 +523,11 @@ function addBarriers() {
 
 function addTree(x, y, z, scale = 1, lighter = false) {
   const tree = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 1.7, 6), materials.trunk);
+  const trunk = new THREE.Mesh(treeTrunkGeometry, materials.trunk);
   trunk.position.y = 0.85;
   trunk.castShadow = true;
   tree.add(trunk);
-  const crown = new THREE.Mesh(new THREE.ConeGeometry(1.55, 3.3, 7), lighter ? materials.foliageLight : materials.foliage);
+  const crown = new THREE.Mesh(treeCrownGeometry, lighter ? materials.foliageLight : materials.foliage);
   crown.position.y = 3.1;
   crown.castShadow = true;
   tree.add(crown);
@@ -534,13 +540,20 @@ function addTree(x, y, z, scale = 1, lighter = false) {
 }
 
 function addScenery() {
-  for (let i = 0; i < 78; i += 1) {
-    const sample = trackSample(i / 78);
+  for (let i = 0; i < 112; i += 1) {
+    const sample = trackSample(i / 112);
     const side = i % 2 === 0 ? -1 : 1;
     const offset = 17 + (i % 3) * 2.5;
+    const terrainProgress = side > 0
+      ? (offset - (TRACK_HALF_WIDTH + 3)) / 380
+      : (offset - TRACK_HALF_WIDTH - 2) / 7;
+    const terrainHeight = side > 0
+      ? sample.point.y - 1.2 - terrainProgress * 18
+        + Math.sin(sample.progress * Math.PI * 14 + terrainProgress * 12 * 0.63) * terrainProgress * 2
+      : sample.point.y - 1.35 - terrainProgress * 0.03;
     addTree(
       sample.point.x + sample.right.x * side * offset,
-      sample.point.y,
+      terrainHeight,
       sample.point.z + sample.right.z * side * offset,
       0.9 + (i % 4) * 0.09,
       i % 3 === 0,
@@ -589,7 +602,7 @@ function addScenery() {
   }
   stand.position.set(
     standSample.point.x - standSample.right.x * 28,
-    standSample.point.y,
+    standSample.point.y - 1.35 - ((28 - TRACK_HALF_WIDTH - 2) / 7) * 0.03,
     standSample.point.z - standSample.right.z * 28,
   );
   stand.rotation.y = standSample.yaw;
@@ -602,26 +615,23 @@ function addScenery() {
 function addMountainsAndLake() {
   const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x526769, roughness: 0.97, flatShading: true });
   const treeLineMaterial = new THREE.MeshStandardMaterial({ color: 0x244b3b, roughness: 0.95, flatShading: true });
-  const bounds = trackSamples.reduce((box, sample) => ({
-    minX: Math.min(box.minX, sample.point.x),
-    maxX: Math.max(box.maxX, sample.point.x),
-    minZ: Math.min(box.minZ, sample.point.z),
-    maxZ: Math.max(box.maxZ, sample.point.z),
-  }), { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity });
-  const viewGap = 260;
   for (let index = 0; index < 18; index += 1) {
-    const x = bounds.minX - 530 + index * ((bounds.maxX - bounds.minX + 1060) / 17);
-    const z = bounds.minZ - viewGap - (index % 4) * 80;
-    const height = 42 + (index * 13) % 24;
-    const width = 80 + (index % 3) * 22;
+    const sample = trackSample(index / 18);
+    const side = index % 2 === 0 ? -1 : 1;
+    const distance = 370 + (index % 3) * 26;
+    const x = sample.point.x + sample.right.x * side * distance;
+    const z = sample.point.z + sample.right.z * side * distance;
+    const height = 68 + (index * 13) % 28;
+    const width = 92 + (index % 3) * 26;
     const mountain = new THREE.Mesh(new THREE.ConeGeometry(width, height, 13), terrainMaterial);
-    mountain.position.set(x, -10 + height * 0.45, z);
+    mountain.position.set(x, sample.point.y - 20 + height / 2, z);
     mountain.rotation.y = index * 0.37;
     mountain.castShadow = true;
     scene.add(mountain);
     const foothill = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8), treeLineMaterial);
     foothill.scale.set(width * 1.6, 8, 75);
-    foothill.position.set(x, -10, z + 24);
+    foothill.position.set(x, sample.point.y - 24, z);
+    foothill.rotation.y = sample.yaw;
     scene.add(foothill);
   }
   const water = new THREE.MeshStandardMaterial({ color: 0x327d89, roughness: 0.32, metalness: 0.06, side: THREE.DoubleSide });
@@ -629,16 +639,18 @@ function addMountainsAndLake() {
   const lakeWidth = 88;
   const lakeLength = 142;
   const lakeClearance = TRACK_HALF_WIDTH + 2.3 + lakeWidth / 2 + 8;
-  const lake = new THREE.Mesh(new THREE.PlaneGeometry(lakeWidth, lakeLength, 1, 1), water);
-  lake.rotation.x = -Math.PI / 2;
-  lake.rotation.y = Math.atan2(shoreline.right.z, shoreline.right.x);
-  lake.position.set(
+  const lakeGroup = new THREE.Group();
+  lakeGroup.position.set(
     shoreline.point.x + shoreline.right.x * lakeClearance,
     shoreline.point.y - 1.5,
     shoreline.point.z + shoreline.right.z * lakeClearance,
   );
+  lakeGroup.rotation.y = shoreline.yaw;
+  const lake = new THREE.Mesh(new THREE.PlaneGeometry(lakeWidth, lakeLength, 1, 1), water);
+  lake.rotation.x = -Math.PI / 2;
+  lakeGroup.add(lake);
   lake.userData.isBackdropWater = true;
-  scene.add(lake);
+  scene.add(lakeGroup);
 }
 
 const checkpointMaterials = CHECKPOINT_POSITIONS.map((_, index) => new THREE.MeshStandardMaterial({
@@ -706,6 +718,8 @@ function applyGraphicsProfile() {
 }
 
 const sceneryInstances = [];
+const treeTrunkGeometry = new THREE.CylinderGeometry(0.22, 0.32, 1.7, 6);
+const treeCrownGeometry = new THREE.ConeGeometry(1.55, 3.3, 7);
 
 function createCar(paintColor = 0xd51f32) {
   if (vehicleFactory) {
@@ -1039,9 +1053,7 @@ function refreshTelemetry(now = performance.now()) {
     `Câmera: ${cameraModeLabels[game.cameraMode]} · track ${activeTrack.id}`,
   ].join("\n");
   const playerPoint = projectToMap(player.physics);
-  minimapPlayer.setAttribute("cx", playerPoint.x.toFixed(1));
-  minimapPlayer.setAttribute("cy", playerPoint.y.toFixed(1));
-  minimapPlayer.removeAttribute("transform");
+  minimapPlayer.setAttribute("transform", `translate(${playerPoint.x.toFixed(1)} ${playerPoint.y.toFixed(1)}) rotate(${-THREE.MathUtils.radToDeg(player.physics.yaw).toFixed(1)})`);
   minimapPlayer.setAttribute("visibility", "visible");
   for (const opponent of opponents) {
     const marker = mapMarkers.get(opponent.id);
@@ -1111,6 +1123,7 @@ function resetCar() {
         laneOffset: Math.max(-1, Math.min(1, laneOffset / 5.2)),
         skill: Math.max(0, Math.min(1, profile.aiSkill + ((racer.id * 7) % 5) * 0.015)),
         maxSpeedMps: Math.min(MAX_SPEED_MPS, profile.aiMaxSpeedMps + ((racer.id * 11) % 4) * 1.2),
+        laneWidthMeters: AI_LANE_WIDTH_METERS,
       });
     }
   }
@@ -1426,8 +1439,8 @@ function updateCamera(deltaSeconds, snap = false) {
   const carPosition = car.root.position;
   if (cameraMode === 1) {
     camera = cameraCockpit;
-    camera.position.copy(carPosition).add(new THREE.Vector3(0, 1.1, 0.65));
-    camera.lookAt(carPosition.clone().addScaledVector(forward, 25));
+    camera.position.copy(carPosition).add(new THREE.Vector3(0, 1.12, 0.15).applyQuaternion(car.root.quaternion));
+    camera.lookAt(carPosition.clone().add(new THREE.Vector3(0, 1.0, -25).applyQuaternion(car.root.quaternion)));
     return camera;
   }
   const targetCamera = cameraMode === 2 ? cameraFar : cameraMode === 3 ? cameraElevated : cameras[0];

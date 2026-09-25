@@ -3,6 +3,7 @@ import test from "node:test";
 import { createOpponentDriver, updateOpponentDriver, rankRacers } from "./race-ai.mjs";
 import { createVehicleState, stepVehicle } from "./vehicle-physics.mjs";
 import { TRACK_CONFIGURATIONS } from "./track-configurations.mjs";
+import { SPORTS_CAR_DIMENSIONS } from "./vehicle-models.mjs";
 
 const straight = Object.freeze({
   headingError: 0,
@@ -314,7 +315,7 @@ test("usa progresso circular e velocidade relativa para seguir somente trafego a
     trafficAhead: [{ lane: 0, gapMeters: 4, relativeSpeedMps: -5, trackProgress: 0.01 }],
   });
   assert.notEqual(aheadAcrossStart.driver.targetLane, 0);
-  assert.ok(aheadAcrossStart.controls.brake > 0);
+  assert.equal(aheadAcrossStart.controls.brake, 0, "líder mais rápido não exige frenagem");
 });
 
 test("trafego ocupando todas as faixas segura o gap e retoma ao liberar", () => {
@@ -394,8 +395,10 @@ test("altera faixa, ultrapassa lider mais lento e volta a acelerar sem teleporte
     const trafficAhead = gapMeters > 0
       ? [{ lane: 0, gapMeters, relativeSpeedMps: vehicle.speedMps - leaderSpeedMps }]
       : [];
+    const forward = { x: -Math.sin(vehicle.yaw), z: -Math.cos(vehicle.yaw) };
     const decision = updateOpponentDriver(driver, {
       ...straight,
+      headingError: Math.atan2(-forward.x, -forward.z),
       lateralError: vehicle.x,
       speedMps: vehicle.speedMps,
       targetSpeedMps: 70,
@@ -420,7 +423,8 @@ test("altera faixa, ultrapassa lider mais lento e volta a acelerar sem teleporte
   }
 
   assert.ok(minimumLongitudinalGap > 0, "mantem gap positivo enquanto segue atras do lider");
-  assert.ok(minimumVehicleSeparation > 2.2, "ultrapassa sem sobrepor o collider lateral do carro");
+  assert.ok(minimumVehicleSeparation > SPORTS_CAR_DIMENSIONS.width + 0.2,
+    "ultrapassa sem sobrepor o collider lateral do carro");
   assert.ok(maximumStepDistance < 0.6, "deslocamento permanece fisico, sem teleporte");
   assert.ok(changedLane && passed, "muda de faixa e efetivamente passa o lider");
   assert.ok(vehicle.speedMps > leaderSpeedMps, "retoma velocidade de corrida apos ultrapassar");

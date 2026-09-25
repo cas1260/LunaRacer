@@ -3,7 +3,7 @@ const DEFAULT_PAINT_COLOR = 0x0d2a45;
 export const SPORTS_CAR_DIMENSIONS = Object.freeze({
   length: 5.28,
   width: 2.72,
-  height: 1.56,
+  height: 1.60,
   wheelbase: 2.78,
   wheelRadius: 0.39,
   wheelWidth: 0.32,
@@ -533,7 +533,7 @@ function addFenders(THREE, bodyGroup, geometry, materials) {
         geometry.fender,
         materials.paint,
         `fender-${side < 0 ? "left" : "right"}-${z < 0 ? "front" : "rear"}`,
-        [side * 1.105, SPORTS_CAR_DIMENSIONS.wheelRadius + 0.045, z],
+        [side * 1.105, SPORTS_CAR_DIMENSIONS.wheelRadius + SPORTS_CAR_DIMENSIONS.groundClearance + 0.045, z],
         [0, Math.PI / 2, 0],
       );
       fender.userData.role = "fender";

@@ -138,9 +138,12 @@ if (THREE.error) {
       const car = createSportsCar(THREE, { profile, detailLevel: "high" });
       for (const sway of [-0.1, 0.1]) {
         car.bodyGroup.rotation.z = sway;
-        car.root.updateMatrixWorld(true);
-        const currentBounds = new THREE.Box3().setFromObject(car.root);
-        console.log(profile, sway, currentBounds.min.toArray(), currentBounds.max.toArray());
+      car.root.updateMatrixWorld(true);
+      const currentBounds = new THREE.Box3().setFromObject(car.root);
+        assert.ok(currentBounds.min.y >= -car.dimensions.groundClearance - 0.02,
+          `${profile} excede o envelope inferior do collider com sway ${sway}`);
+        assert.ok(currentBounds.max.y <= car.dimensions.height - car.dimensions.groundClearance + 0.02,
+          `${profile} excede o envelope superior do collider com sway ${sway}`);
         assertFiniteModel(THREE, car);
       }
     }
