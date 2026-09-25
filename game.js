@@ -31,19 +31,72 @@ function createRoadMaterial() {
   let seed = 7841;
   for (let pixel = 0; pixel < image.data.length; pixel += 4) {
     seed = (seed * 1664525 + 1013904223) >>> 0;
-    const grain = 43 + (seed >>> 25);
+    const grain = 88 + ((seed >>> 27) & 15);
     image.data[pixel] = grain;
     image.data[pixel + 1] = grain + 2;
     image.data[pixel + 2] = grain + 5;
     image.data[pixel + 3] = 255;
   }
   context.putImageData(image, 0, 0);
+  context.globalAlpha = 0.14;
+  context.lineCap = "round";
+  for (const [y, width, bend] of [[176, 7, 6], [254, 10, -5], [334, 6, 4]]) {
+    context.strokeStyle = "#23292a";
+    context.lineWidth = width;
+    context.beginPath();
+    context.moveTo(0, y);
+    context.bezierCurveTo(canvas.width * 0.28, y + bend, canvas.width * 0.7, y - bend, canvas.width, y);
+    context.stroke();
+  }
+  context.globalAlpha = 1;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
   return new THREE.MeshStandardMaterial({
     color: 0xb4b2ac,
     roughness: 0.95,
     side: THREE.DoubleSide,
-    map: new THREE.CanvasTexture(canvas),
+    map: texture,
   });
+}
+
+function createSkyBackground() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const context = canvas.getContext("2d");
+  const sky = context.createLinearGradient(0, 0, 0, canvas.height);
+  sky.addColorStop(0, "#3f75a5");
+  sky.addColorStop(0.42, "#79a9c8");
+  sky.addColorStop(0.72, "#c6d9dc");
+  sky.addColorStop(1, "#98b09b");
+  context.fillStyle = sky;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const sunGlow = context.createRadialGradient(730, 150, 2, 730, 150, 180);
+  sunGlow.addColorStop(0, "rgb(255 243 207 / 46%)");
+  sunGlow.addColorStop(1, "rgb(255 243 207 / 0%)");
+  context.fillStyle = sunGlow;
+  context.fillRect(540, 0, 380, 330);
+  context.globalAlpha = 0.13;
+  for (let cloud = 0; cloud < 14; cloud += 1) {
+    const x = 45 + (cloud * 137) % 920;
+    const y = 92 + (cloud * 53) % 100;
+    const width = 38 + (cloud % 4) * 18;
+    const height = 3 + (cloud % 3) * 2;
+    const haze = context.createLinearGradient(x, y - height, x, y + height);
+    haze.addColorStop(0, "rgb(255 255 255 / 0%)");
+    haze.addColorStop(0.5, "rgb(255 255 255 / 72%)");
+    haze.addColorStop(1, "rgb(255 255 255 / 0%)");
+    context.fillStyle = haze;
+    context.fillRect(x - width, y - height, width * 2, height * 2);
+  }
+  context.globalAlpha = 1;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 function createGroundMaterial() {
@@ -56,19 +109,61 @@ function createGroundMaterial() {
   for (let pixel = 0; pixel < pixels.data.length; pixel += 4) {
     seed = (seed * 1664525 + 1013904223) >>> 0;
     const variation = (seed >>> 26) & 31;
-    pixels.data[pixel] = 36 + variation;
-    pixels.data[pixel + 1] = 68 + variation;
-    pixels.data[pixel + 2] = 55 + variation;
+    pixels.data[pixel] = 50 + variation;
+    pixels.data[pixel + 1] = 94 + variation;
+    pixels.data[pixel + 2] = 45 + variation;
+    pixels.data[pixel + 3] = 255;
+  }
+  context.putImageData(pixels, 0, 0);
+  context.globalAlpha = 0.22;
+  for (let patch = 0; patch < 460; patch += 1) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const x = seed % canvas.width;
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const y = seed % canvas.height;
+    const radius = 4 + ((seed >>> 25) & 23);
+    context.fillStyle = ["#9bad5b", "#4e683c", "#b7a56f", "#354a32"][(seed >>> 30) & 3];
+    for (const dx of [-canvas.width, 0, canvas.width]) {
+      for (const dy of [-canvas.height, 0, canvas.height]) {
+        context.beginPath();
+        context.ellipse(x + dx, y + dy, radius * 1.8, radius, seed * 0.0001, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+  }
+  context.globalAlpha = 1;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return new THREE.MeshStandardMaterial({ color: 0xffffff, map: texture, roughness: 0.96 });
+}
+
+function createGravelMaterial() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext("2d");
+  const pixels = context.createImageData(canvas.width, canvas.height);
+  let seed = 47629;
+  for (let pixel = 0; pixel < pixels.data.length; pixel += 4) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const grain = (seed >>> 25) & 31;
+    pixels.data[pixel] = 92 + grain;
+    pixels.data[pixel + 1] = 79 + grain;
+    pixels.data[pixel + 2] = 64 + grain;
     pixels.data[pixel + 3] = 255;
   }
   context.putImageData(pixels, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(32, 32);
+  texture.repeat.set(12, 12);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
-  return new THREE.MeshStandardMaterial({ color: 0x7c9c8a, map: texture, roughness: 0.94 });
+  return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.98, side: THREE.DoubleSide });
 }
 
 const [{ createVehicleState, stepVehicle, FIXED_PHYSICS_STEP_SECONDS }, { createInputController }, {
@@ -100,7 +195,7 @@ const vehicleFactory = createSportsCar;
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 const TRACK_WIDTH = 18;
 const TRACK_HALF_WIDTH = TRACK_WIDTH / 2;
-const AI_LANE_WIDTH_METERS = 3.2;
+const AI_LANE_WIDTH_METERS = 3;
 let CHECKPOINT_POSITIONS = [0, 0.12, 0.23, 0.34, 0.45, 0.56, 0.67, 0.78, 0.89];
 const BEST_LAP_KEY = "lunaracer.bestLapMs.v1";
 const MAX_SPEED_MPS = 98;
@@ -133,6 +228,10 @@ const resumeButton = document.querySelector("#resume-button");
 const difficultySelect = document.querySelector("#difficulty-select");
 const graphicsSelect = document.querySelector("#graphics-select");
 const trackSelect = document.querySelector("#track-select");
+const trackPicker = document.querySelector("#track-picker");
+const effectsVolumeInput = document.querySelector("#effects-volume");
+const effectsVolumeValue = document.querySelector("#effects-volume-value");
+let effectsVolume = effectsVolumeInput.valueAsNumber / 100;
 const difficultyValue = document.querySelector("#difficulty-value");
 const controllerStatus = document.querySelector("#controller-status");
 const cameraValue = document.querySelector("#camera-value");
@@ -156,16 +255,19 @@ try {
 if (!THREE) throw new Error("Three.js indisponível.");
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x4c7189);
+const skyBackground = createSkyBackground();
+scene.background = skyBackground;
 scene.fog = new THREE.Fog(0x8da5ad, 520, 1450);
 
 let camera = new THREE.PerspectiveCamera(48, 1, 0.1, 1800);
 const cameraCockpit = new THREE.PerspectiveCamera(72, 1, 0.1, 320);
+const cameraInterior = new THREE.PerspectiveCamera(67, 1, 0.035, 1400);
+const cameraMirror = new THREE.PerspectiveCamera(60, 4, 0.1, 500);
 const cameraElevated = new THREE.OrthographicCamera(-760, 760, 475, -475, 0.1, 2400);
 camera.position.set(0, 3.7, 7);
 const cameraFar = new THREE.PerspectiveCamera(53, 1, 0.1, 2200);
-const cameras = [camera, cameraCockpit, cameraFar, cameraElevated];
-const cameraModeLabels = ["TRASEIRA PRÓXIMA", "COCKPIT", "TRASEIRA LONGE", "PANORÂMICA"];
+const cameras = [camera, cameraCockpit, cameraFar, cameraElevated, cameraInterior];
+const cameraModeLabels = ["TRASEIRA PRÓXIMA", "VISÃO DO PILOTO", "TRASEIRA LONGE", "MAPA AÉREO DO CIRCUITO", "INTERIOR DO CARRO"];
 let cameraMode = 0;
 let cameraFov = camera.fov;
 
@@ -216,17 +318,24 @@ sunlight.shadow.camera.top = 95;
 sunlight.shadow.camera.bottom = -95;
 sunlight.shadow.normalBias = 0.035;
 scene.add(sunlight);
+try {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromEquirectangular(skyBackground).texture;
+  scene.environmentIntensity = 0.65;
+  pmrem.dispose();
+} catch (error) {
+  console.warn("Reflexos ambientais indisponíveis; preservando a iluminação direta:", error);
+}
 
 const materials = {
   grass: createGroundMaterial(),
   road: createRoadMaterial(),
-  runoff: new THREE.MeshStandardMaterial({ color: 0xc6c7c0, roughness: 0.92, side: THREE.DoubleSide }),
+  runoff: createGravelMaterial(),
   line: new THREE.MeshStandardMaterial({ color: 0x7fe2e8, roughness: 0.8, side: THREE.DoubleSide }),
-  barrierLight: new THREE.MeshStandardMaterial({ color: 0xe6e7df, roughness: 0.84 }),
-  barrierRace: new THREE.MeshStandardMaterial({ color: 0xd3444c, roughness: 0.82 }),
+  barrier: new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.84, side: THREE.DoubleSide }),
   trunk: new THREE.MeshStandardMaterial({ color: 0x624a32, roughness: 1 }),
-  foliage: new THREE.MeshStandardMaterial({ color: 0x315e43, roughness: 1 }),
-  foliageLight: new THREE.MeshStandardMaterial({ color: 0x497449, roughness: 1 }),
+  foliage: new THREE.MeshStandardMaterial({ color: 0x315e43, roughness: 1, flatShading: true }),
+  foliageLight: new THREE.MeshStandardMaterial({ color: 0x497449, roughness: 1, flatShading: true }),
   cone: new THREE.MeshStandardMaterial({ color: 0xf18432, roughness: 0.75 }),
   coneBand: new THREE.MeshStandardMaterial({ color: 0xf4eee1, roughness: 0.72 }),
   grandstand: new THREE.MeshStandardMaterial({ color: 0x42474b, roughness: 0.9 }),
@@ -241,9 +350,55 @@ for (const [parameter, select] of [["difficulty", difficultySelect], ["graphics"
   const value = pageParams.get(parameter);
   if (select && [...select.options].some((option) => option.value === value)) select.value = value;
 }
+const selectedVolume = pageParams.get("effects");
+if (selectedVolume !== null && Number.isFinite(Number(selectedVolume)) && Number(selectedVolume) >= 0 && Number(selectedVolume) <= 100) {
+  effectsVolumeInput.value = selectedVolume;
+  effectsVolume = effectsVolumeInput.valueAsNumber / 100;
+  effectsVolumeValue.textContent = `${effectsVolumeInput.value}%`;
+}
 const selectedTrackId = pageParams.get("track") || trackSelect?.value || "interlagos";
 const activeTrack = TRACK_CONFIGURATIONS.find((track) => track.id === selectedTrackId) ?? TRACK_CONFIGURATIONS[0];
 if (trackSelect) trackSelect.value = activeTrack.id;
+if (trackPicker) {
+  for (const track of TRACK_CONFIGURATIONS) {
+    const xs = track.centerline.map((point) => point.x);
+    const zs = track.centerline.map((point) => point.z);
+    const minX = Math.min(...xs);
+    const minZ = Math.min(...zs);
+    const scale = Math.min(144 / (Math.max(...xs) - minX), 84 / (Math.max(...zs) - minZ));
+    const offsetX = (160 - (Math.max(...xs) - minX) * scale) / 2;
+    const offsetY = (100 - (Math.max(...zs) - minZ) * scale) / 2;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "track-card";
+    button.dataset.trackId = track.id;
+    button.classList.toggle("is-selected", track.id === activeTrack.id);
+    button.setAttribute("aria-pressed", String(track.id === activeTrack.id));
+    button.setAttribute("aria-label", `Selecionar pista ${track.name}`);
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.classList.add("track-card-map");
+    svg.setAttribute("viewBox", "0 0 160 100");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `${track.centerline.map((point, index) => `${index ? "L" : "M"}${(offsetX + (point.x - minX) * scale).toFixed(1)} ${(offsetY + (point.z - minZ) * scale).toFixed(1)}`).join(" ")} Z`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "4");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    svg.append(path);
+    const name = document.createElement("span");
+    name.className = "track-card-name";
+    name.textContent = track.name;
+    button.append(svg, name);
+    button.addEventListener("click", () => {
+      if (app.dataset.state !== "ready" || track.id === activeTrack.id) return;
+      trackSelect.value = track.id;
+      trackSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    trackPicker.append(button);
+  }
+}
 CHECKPOINT_POSITIONS = activeTrack.checkpoints.map(({ progress }) => progress);
 const difficultyProfiles = activeTrack.difficultyProfiles;
 const trackControlPoints = activeTrack.centerline.map(({ x, y, z }) => new THREE.Vector3(x, y, z));
@@ -268,6 +423,26 @@ function trackSample(t) {
 }
 
 const trackSamples = Array.from({ length: 2048 }, (_, index) => trackSample(index / 2048));
+const trackCellSize = 24;
+const trackCells = new Map();
+for (const sample of trackSamples) {
+  const key = `${Math.floor(sample.point.x / trackCellSize)},${Math.floor(sample.point.z / trackCellSize)}`;
+  if (!trackCells.has(key)) trackCells.set(key, []);
+  trackCells.get(key).push(sample.point);
+}
+
+function nearAnyRoad(x, z, radius) {
+  const radiusSquared = radius * radius;
+  for (let cellX = Math.floor((x - radius) / trackCellSize); cellX <= Math.floor((x + radius) / trackCellSize); cellX += 1) {
+    for (let cellZ = Math.floor((z - radius) / trackCellSize); cellZ <= Math.floor((z + radius) / trackCellSize); cellZ += 1) {
+      for (const point of trackCells.get(`${cellX},${cellZ}`) ?? []) {
+        if ((point.x - x) ** 2 + (point.z - z) ** 2 < radiusSquared) return true;
+      }
+    }
+  }
+  return false;
+}
+
 const gates = CHECKPOINT_POSITIONS.map((t) => trackSample(t));
 const checkpointNameForProgress = (progress) => activeTrack.checkpoints
   .slice()
@@ -281,6 +456,50 @@ for (const sample of trackSamples) {
   mapView.minZ = Math.min(mapView.minZ, sample.point.z);
   mapView.maxZ = Math.max(mapView.maxZ, sample.point.z);
 }
+const terrainMaskBounds = {
+  minX: mapView.minX - 240,
+  minZ: mapView.minZ - 240,
+  spanX: mapView.maxX - mapView.minX + 480,
+  spanZ: mapView.maxZ - mapView.minZ + 480,
+};
+const terrainMaskScale = 1024 / Math.max(terrainMaskBounds.spanX, terrainMaskBounds.spanZ);
+const terrainMaskCanvas = document.createElement("canvas");
+terrainMaskCanvas.width = Math.ceil(terrainMaskBounds.spanX * terrainMaskScale);
+terrainMaskCanvas.height = Math.ceil(terrainMaskBounds.spanZ * terrainMaskScale);
+const terrainMaskContext = terrainMaskCanvas.getContext("2d");
+terrainMaskContext.fillStyle = "#fff";
+terrainMaskContext.fillRect(0, 0, terrainMaskCanvas.width, terrainMaskCanvas.height);
+terrainMaskContext.setTransform(terrainMaskScale, 0, 0, terrainMaskScale,
+  -terrainMaskBounds.minX * terrainMaskScale, -terrainMaskBounds.minZ * terrainMaskScale);
+terrainMaskContext.strokeStyle = "#000";
+terrainMaskContext.lineWidth = TRACK_WIDTH + 5;
+terrainMaskContext.lineJoin = "round";
+terrainMaskContext.lineCap = "round";
+terrainMaskContext.beginPath();
+terrainMaskContext.moveTo(trackSamples[0].point.x, trackSamples[0].point.z);
+for (const sample of trackSamples.slice(1)) terrainMaskContext.lineTo(sample.point.x, sample.point.z);
+terrainMaskContext.closePath();
+terrainMaskContext.stroke();
+const terrainMask = new THREE.CanvasTexture(terrainMaskCanvas);
+terrainMask.minFilter = THREE.LinearFilter;
+materials.grass.onBeforeCompile = (shader) => {
+  shader.uniforms.terrainMask = { value: terrainMask };
+  shader.uniforms.terrainMaskBounds = { value: new THREE.Vector4(
+    terrainMaskBounds.minX, terrainMaskBounds.minZ, terrainMaskBounds.spanX, terrainMaskBounds.spanZ,
+  ) };
+  shader.vertexShader = "varying vec2 vTerrainMaskUv; uniform vec4 terrainMaskBounds;\n" + shader.vertexShader.replace(
+    "#include <project_vertex>",
+    `#include <project_vertex>
+     vec2 terrainPosition = (modelMatrix * vec4(transformed, 1.0)).xz;
+     vTerrainMaskUv = vec2((terrainPosition.x - terrainMaskBounds.x) / terrainMaskBounds.z,
+       1.0 - (terrainPosition.y - terrainMaskBounds.y) / terrainMaskBounds.w);`,
+  );
+  shader.fragmentShader = "varying vec2 vTerrainMaskUv; uniform sampler2D terrainMask;\n" + shader.fragmentShader.replace(
+    "#include <alphatest_fragment>",
+    "#include <alphatest_fragment>\n if (texture2D(terrainMask, vTerrainMaskUv).r < 0.5) discard;",
+  );
+};
+materials.grass.customProgramCacheKey = () => "lunaracer-terrain-mask";
 const mapProjection = {
   scale: Math.min(190 / Math.max(mapView.maxX - mapView.minX, 1), 115 / Math.max(mapView.maxZ - mapView.minZ, 1)),
   offsetX: 25,
@@ -303,22 +522,30 @@ const trackBounds = {
   center: new THREE.Vector3((mapView.minX + mapView.maxX) / 2, 0, (mapView.minZ + mapView.maxZ) / 2),
 };
 const maxTrackHeight = trackSamples.reduce((height, sample) => Math.max(height, sample.point.y), -Infinity);
+const worldFloorHeight = trackSamples.reduce((height, sample) => Math.min(height, sample.point.y), Infinity) - 25;
 
 function makeRibbon(offsetA, offsetB, material, y = 0.06) {
   const positions = [];
+  const uvs = [];
   const indices = [];
   const samples = trackSamples.length;
-  for (const sample of trackSamples) {
+  const trackLength = trackCurve.getLength();
+  const isRoad = material === materials.road;
+  const textureLength = isRoad ? 60 : 12;
+  const textureWidth = isRoad ? TRACK_WIDTH : 12;
+  for (let index = 0; index <= samples; index += 1) {
+    const sample = trackSamples[index % samples];
     for (const offset of [offsetA, offsetB]) {
       positions.push(
         sample.point.x + sample.right.x * offset,
         sample.point.y + y,
         sample.point.z + sample.right.z * offset,
       );
+      uvs.push(index / samples * Math.round(trackLength / textureLength), offset / textureWidth);
     }
   }
   for (let i = 0; i < samples; i += 1) {
-    const next = (i + 1) % samples;
+    const next = i + 1;
     const a = i * 2;
     const b = a + 1;
     const c = next * 2;
@@ -327,6 +554,7 @@ function makeRibbon(offsetA, offsetB, material, y = 0.06) {
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   const mesh = new THREE.Mesh(geometry, material);
@@ -335,7 +563,18 @@ function makeRibbon(offsetA, offsetB, material, y = 0.06) {
 }
 
 function addGroundAndRoad() {
+  const worldExtent = Math.max(terrainMaskBounds.spanX, terrainMaskBounds.spanZ) + 1000;
+  const baseGeometry = new THREE.PlaneGeometry(worldExtent, worldExtent).rotateX(-Math.PI / 2);
+  const baseUvs = baseGeometry.getAttribute("uv");
+  for (let index = 0; index < baseUvs.count; index += 1) {
+    baseUvs.setXY(index, baseUvs.getX(index) * worldExtent / 20, baseUvs.getY(index) * worldExtent / 20);
+  }
+  const baseGround = new THREE.Mesh(baseGeometry, new THREE.MeshStandardMaterial({ map: materials.grass.map, roughness: 0.96 }));
+  baseGround.position.set(trackBounds.center.x, worldFloorHeight, trackBounds.center.z);
+  baseGround.receiveShadow = true;
+  scene.add(baseGround);
   const groundPositions = [];
+  const groundUvs = [];
   const groundIndices = [];
   const radialSteps = 12;
   for (const sample of trackSamples) {
@@ -345,6 +584,7 @@ function addGroundAndRoad() {
       const height = sample.point.y - 1.2 - progress * 18 + Math.sin(sample.progress * Math.PI * 14 + step * 0.63) * progress * 2;
       const vertex = sample.point.clone().addScaledVector(sample.right, offset);
       groundPositions.push(vertex.x, height, vertex.z);
+      groundUvs.push(vertex.x / 20, vertex.z / 20);
     }
   }
   for (let index = 0; index < trackSamples.length; index += 1) {
@@ -357,6 +597,7 @@ function addGroundAndRoad() {
   }
   const groundGeometry = new THREE.BufferGeometry();
   groundGeometry.setAttribute("position", new THREE.Float32BufferAttribute(groundPositions, 3));
+  groundGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(groundUvs, 2));
   groundGeometry.setIndex(groundIndices);
   groundGeometry.computeVertexNormals();
   const surroundingGround = new THREE.Mesh(groundGeometry, materials.grass);
@@ -364,6 +605,7 @@ function addGroundAndRoad() {
   scene.add(surroundingGround);
 
   const infieldPositions = [];
+  const infieldUvs = [];
   const infieldIndices = [];
   const infieldSteps = 14;
   for (const sample of trackSamples) {
@@ -372,6 +614,7 @@ function addGroundAndRoad() {
       const vertex = sample.point.clone().addScaledVector(sample.right, offset);
       const elevation = sample.point.y - 1.35 - step * 0.03;
       infieldPositions.push(vertex.x, elevation, vertex.z);
+      infieldUvs.push(vertex.x / 20, vertex.z / 20);
     }
   }
   for (let index = 0; index < trackSamples.length; index += 1) {
@@ -384,13 +627,14 @@ function addGroundAndRoad() {
   }
   const infieldGeometry = new THREE.BufferGeometry();
   infieldGeometry.setAttribute("position", new THREE.Float32BufferAttribute(infieldPositions, 3));
+  infieldGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(infieldUvs, 2));
   infieldGeometry.setIndex(infieldIndices);
   infieldGeometry.computeVertexNormals();
   const infield = new THREE.Mesh(infieldGeometry, materials.grass);
   infield.receiveShadow = true;
   scene.add(infield);
-  makeRibbon(-TRACK_HALF_WIDTH - 1.1, -TRACK_HALF_WIDTH, materials.runoff, 0.005);
-  makeRibbon(TRACK_HALF_WIDTH, TRACK_HALF_WIDTH + 1.1, materials.runoff, 0.005);
+  makeRibbon(-TRACK_HALF_WIDTH - 2.4, -TRACK_HALF_WIDTH, materials.runoff, 0.005);
+  makeRibbon(TRACK_HALF_WIDTH, TRACK_HALF_WIDTH + 2.4, materials.runoff, 0.005);
   makeRibbon(-TRACK_HALF_WIDTH, TRACK_HALF_WIDTH, materials.road, 0.035);
   makeRibbon(-TRACK_HALF_WIDTH, -TRACK_HALF_WIDTH + 0.24, materials.line, 0.062);
   makeRibbon(TRACK_HALF_WIDTH - 0.24, TRACK_HALF_WIDTH, materials.line, 0.062);
@@ -488,94 +732,235 @@ function addStartLine() {
 }
 
 function addBarriers() {
-  const segmentCount = Math.ceil(trackCurve.getLength() / 2.1);
-  const segmentLength = trackCurve.getLength() / segmentCount * 1.02;
-  const geometry = new THREE.BoxGeometry(0.4, 0.78, segmentLength);
-  const instances = [
-    [new THREE.InstancedMesh(geometry, materials.barrierLight, Math.ceil(segmentCount / 2)), new THREE.InstancedMesh(geometry, materials.barrierRace, Math.floor(segmentCount / 2))],
-    [new THREE.InstancedMesh(geometry, materials.barrierLight, Math.ceil(segmentCount / 2)), new THREE.InstancedMesh(geometry, materials.barrierRace, Math.floor(segmentCount / 2))],
-  ];
-  const counts = [[0, 0], [0, 0]];
-  const dummy = new THREE.Object3D();
-  for (let i = 0; i < segmentCount; i += 1) {
-    const sample = trackSample(i / segmentCount);
-    const paletteIndex = i % 2 === 0 ? 0 : 1;
-    for (let sideIndex = 0; sideIndex < 2; sideIndex += 1) {
-      const side = sideIndex === 0 ? -1 : 1;
-      const offset = side * (TRACK_HALF_WIDTH + 0.48);
-      const center = sample.point.clone().addScaledVector(sample.right, offset);
-      dummy.position.set(center.x, center.y + 0.4, center.z);
-      dummy.rotation.set(0, sample.yaw, 0);
-      dummy.updateMatrix();
-      instances[sideIndex][paletteIndex].setMatrixAt(counts[sideIndex][paletteIndex]++, dummy.matrix);
+  const positions = [];
+  const colors = [];
+  const indices = [];
+  const palette = [new THREE.Color(0xe6e7df), new THREE.Color(0xd3444c)];
+  for (const side of [-1, 1]) {
+    for (let index = 0; index < trackSamples.length; index += 1) {
+      const start = trackSamples[index];
+      const end = trackSamples[(index + 1) % trackSamples.length];
+      const color = palette[Math.floor(index / 4) % 2];
+      const base = positions.length / 3;
+      for (const sample of [start, end]) {
+        for (const offset of [TRACK_HALF_WIDTH + 0.28, TRACK_HALF_WIDTH + 0.68]) {
+          positions.push(sample.point.x + sample.right.x * side * offset, sample.point.y, sample.point.z + sample.right.z * side * offset);
+          positions.push(sample.point.x + sample.right.x * side * offset, sample.point.y + 0.78, sample.point.z + sample.right.z * side * offset);
+          colors.push(...color.toArray(), ...color.toArray());
+        }
+      }
+      for (const face of [[0, 4, 1, 1, 4, 5], [2, 3, 6, 3, 7, 6], [1, 5, 3, 3, 5, 7]]) {
+        indices.push(...face.map((vertex) => base + vertex));
+      }
     }
   }
-  for (const sideMeshes of instances) {
-    for (const mesh of sideMeshes) {
-      mesh.castShadow = false;
-      mesh.receiveShadow = true;
-      mesh.instanceMatrix.needsUpdate = true;
-      mesh.computeBoundingSphere();
-      scene.add(mesh);
-    }
-  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  const barriers = new THREE.Mesh(geometry, materials.barrier);
+  barriers.receiveShadow = true;
+  scene.add(barriers);
 }
 
-function addTree(x, y, z, scale = 1, lighter = false) {
-  const tree = new THREE.Group();
-  const trunk = new THREE.Mesh(treeTrunkGeometry, materials.trunk);
-  trunk.position.y = 0.85;
-  trunk.castShadow = true;
-  tree.add(trunk);
-  const crown = new THREE.Mesh(treeCrownGeometry, lighter ? materials.foliageLight : materials.foliage);
-  crown.position.y = 3.1;
-  crown.castShadow = true;
-  tree.add(crown);
-  tree.position.set(x, y, z);
-  tree.scale.setScalar(scale);
-  tree.userData.lod = Math.hypot(x, z);
-  tree.userData.isTree = true;
-  scene.add(tree);
-  sceneryInstances.push(tree);
+function sceneryGroundHeight(sample, side, offset) {
+  const terrainProgress = side > 0
+    ? Math.max(0, (offset - (TRACK_HALF_WIDTH + 3)) / 220)
+    : Math.max(0, (offset - TRACK_HALF_WIDTH - 2) / 7);
+  return side > 0
+    ? sample.point.y - 1.2 - terrainProgress * 18
+      + Math.sin(sample.progress * Math.PI * 14 + terrainProgress * 12 * 0.63) * terrainProgress * 2
+    : sample.point.y - 1.35 - terrainProgress * 0.03;
 }
 
 function addScenery() {
-  for (let i = 0; i < 112; i += 1) {
-    const sample = trackSample(i / 112);
-    const side = i % 2 === 0 ? -1 : 1;
-    const offset = 17 + (i % 3) * 2.5;
-    const terrainProgress = side > 0
-      ? (offset - (TRACK_HALF_WIDTH + 3)) / 380
-      : (offset - TRACK_HALF_WIDTH - 2) / 7;
-    const terrainHeight = side > 0
-      ? sample.point.y - 1.2 - terrainProgress * 18
-        + Math.sin(sample.progress * Math.PI * 14 + terrainProgress * 12 * 0.63) * terrainProgress * 2
-      : sample.point.y - 1.35 - terrainProgress * 0.03;
-    addTree(
-      sample.point.x + sample.right.x * side * offset,
-      terrainHeight,
-      sample.point.z + sample.right.z * side * offset,
-      0.9 + (i % 4) * 0.09,
-      i % 3 === 0,
-    );
-  }
-  const cloudMaterial = new THREE.MeshStandardMaterial({ color: 0xf3f7f9, roughness: 1 });
-  const cloudGeometry = new THREE.SphereGeometry(1, 10, 7);
-  for (let i = 0; i < 26; i += 1) {
-    const cloud = new THREE.Group();
-    const baseX = -160 + (i * 31) % 320;
-    const baseZ = -230 - (i * 47) % 150;
-    for (let puff = 0; puff < 5; puff += 1) {
-      const mesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
-      mesh.scale.set(4 + (puff % 3) * 1.7, 2.2 + (puff % 2) * 0.8, 3.6 + (puff % 2) * 1.4);
-      mesh.position.set((puff - 2) * 4.2, Math.abs(puff - 2) * 0.7, Math.sin(puff) * 1.8);
-      cloud.add(mesh);
+  const trackLength = trackCurve.getLength();
+  const trees = { pine: [], broadleaf: [] };
+  const orderedTrees = [];
+  const profileCounts = {};
+  for (const tier of [
+    { name: "low", spacing: 120, phase: 0 },
+    { name: "medium", spacing: 60, phase: 0.5 },
+    { name: "high", spacing: 34, phase: 0.25 },
+    { name: "extra-high", spacing: 26, phase: 0.75 },
+    { name: "realistic", spacing: 18, phase: 0.15 },
+  ]) {
+    const clusterCount = Math.ceil(trackLength / tier.spacing);
+    for (let cluster = 0; cluster < clusterCount; cluster += 1) {
+      const center = (cluster + 0.5 + tier.phase) / clusterCount;
+      for (const side of [-1, 1]) {
+        for (let member = 0; member < 2; member += 1) {
+          const progress = (center + ((member - 0.5) * 9 + (sceneryRandom() - 0.5) * 4) / trackLength + 1) % 1;
+          const sample = trackSample(progress);
+          const offset = TRACK_HALF_WIDTH + 8 + sceneryRandom() * 24;
+          const type = sceneryRandom() < 0.62 ? "pine" : "broadleaf";
+          const tree = {
+            x: sample.point.x + sample.right.x * side * offset,
+            y: sceneryGroundHeight(sample, side, offset),
+            z: sample.point.z + sample.right.z * side * offset,
+            scale: 0.78 + sceneryRandom() * 0.58,
+            stretch: 0.9 + sceneryRandom() * 0.2,
+            rotation: sceneryRandom() * Math.PI * 2,
+            tint: 0.82 + sceneryRandom() * 0.34,
+          };
+          if (nearAnyRoad(tree.x, tree.z, TRACK_HALF_WIDTH + 2.4 + tree.scale * 2.3)) continue;
+          trees[type].push(tree);
+          orderedTrees.push(tree);
+        }
+      }
     }
-    cloud.position.set(baseX, 81 + (i % 4) * 12, baseZ);
-    cloud.userData.lod = 350;
-    sceneryInstances.push(cloud);
-    scene.add(cloud);
+    const outerTreeCount = { low: 100, medium: 180, high: 240, "extra-high": 340, realistic: 460 }[tier.name];
+    for (let index = 0; index < outerTreeCount; index += 1) {
+      const sample = trackSample(sceneryRandom());
+      const side = sceneryRandom() < 0.24 ? -1 : 1;
+      const offset = side > 0
+        ? TRACK_HALF_WIDTH + 38 + sceneryRandom() * 158
+        : TRACK_HALF_WIDTH + 10 + sceneryRandom() * 72;
+      const type = sceneryRandom() < 0.68 ? "pine" : "broadleaf";
+      const tree = {
+        x: sample.point.x + sample.right.x * side * offset,
+        y: sceneryGroundHeight(sample, side, offset),
+        z: sample.point.z + sample.right.z * side * offset,
+        scale: 0.95 + sceneryRandom() * 0.8,
+        stretch: 0.9 + sceneryRandom() * 0.25,
+        rotation: sceneryRandom() * Math.PI * 2,
+        tint: 0.8 + sceneryRandom() * 0.32,
+      };
+      if (nearAnyRoad(tree.x, tree.z, TRACK_HALF_WIDTH + 2.4 + tree.scale * 2.3)) continue;
+      trees[type].push(tree);
+      orderedTrees.push(tree);
+    }
+    profileCounts[tier.name] = {
+      trunk: trees.pine.length + trees.broadleaf.length,
+      pine: trees.pine.length,
+      broadleaf: trees.broadleaf.length,
+    };
   }
+
+  const dummy = new THREE.Object3D();
+  const tint = new THREE.Color();
+  const trunks = new THREE.InstancedMesh(treeTrunkGeometry, materials.trunk, orderedTrees.length);
+  const pines = new THREE.InstancedMesh(treePineGeometry, materials.foliage, trees.pine.length);
+  const broadleaves = new THREE.InstancedMesh(treeBroadleafGeometry, materials.foliageLight, trees.broadleaf.length);
+  for (const [type, mesh] of [["pine", pines], ["broadleaf", broadleaves]]) {
+    trees[type].forEach((tree, index) => {
+      dummy.position.set(tree.x, tree.y, tree.z);
+      dummy.rotation.set(0, tree.rotation, 0);
+      dummy.scale.set(tree.scale, tree.scale * tree.stretch, tree.scale);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+      tint.setRGB(tree.tint, tree.tint * 0.98, tree.tint * 0.9);
+      mesh.setColorAt(index, tint);
+    });
+  }
+  for (const [index, tree] of orderedTrees.entries()) {
+    dummy.position.set(tree.x, tree.y, tree.z);
+    dummy.rotation.set(0, tree.rotation, 0);
+    dummy.scale.set(tree.scale, tree.scale * tree.stretch, tree.scale);
+    dummy.updateMatrix();
+    trunks.setMatrixAt(index, dummy.matrix);
+  }
+  for (const mesh of [trunks, pines, broadleaves]) {
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+    scene.add(mesh);
+    sceneryInstances.push(mesh);
+  }
+  trunks.userData.profileCounts = Object.fromEntries(Object.entries(profileCounts).map(([name, counts]) => [name, counts.trunk]));
+  pines.userData.profileCounts = Object.fromEntries(Object.entries(profileCounts).map(([name, counts]) => [name, counts.pine]));
+  broadleaves.userData.profileCounts = Object.fromEntries(Object.entries(profileCounts).map(([name, counts]) => [name, counts.broadleaf]));
+
+  const grassCounts = { low: 900, medium: 2500, high: 5000, "extra-high": 9000, realistic: 16000 };
+  const grassLodCounts = {};
+  const grassGeometry = new THREE.PlaneGeometry(0.34, 0.72).translate(0, 0.36, 0);
+  const grassWind = { value: 0 };
+  const grassMaterial = new THREE.MeshStandardMaterial({ color: 0x7d9b45, roughness: 0.96, side: THREE.DoubleSide });
+  grassMaterial.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = grassWind;
+    shader.vertexShader = "uniform float uTime;\n" + shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      `#include <begin_vertex>
+       #ifdef USE_INSTANCING
+         float phase = instanceMatrix[3].x * 0.11 + instanceMatrix[3].z * 0.13;
+       #else
+         float phase = 0.0;
+       #endif
+       float height = max(position.y, 0.0);
+       transformed.x += sin(uTime * 1.3 + phase) * 0.08 * height;
+       transformed.z += cos(uTime * 1.1 + phase) * 0.05 * height;`,
+    );
+    grassMaterial.userData.shader = shader;
+  };
+  grassMaterial.customProgramCacheKey = () => "lunaracer-grass-wind";
+  const grassMesh = new THREE.InstancedMesh(grassGeometry, grassMaterial, grassCounts.realistic * 3);
+  const bladeColors = [new THREE.Color(0x718a3c), new THREE.Color(0x95a94e), new THREE.Color(0x587733)];
+  const profileNames = ["low", "medium", "high", "extra-high", "realistic"];
+  let bladeIndex = 0;
+  for (let tierIndex = 0; tierIndex < profileNames.length; tierIndex += 1) {
+    const name = profileNames[tierIndex];
+    const previousCount = tierIndex === 0 ? 0 : grassCounts[profileNames[tierIndex - 1]];
+    const patchCount = grassCounts[name] - previousCount;
+    const phase = [0, 0.5, 0.25, 0.75, 0.15][tierIndex];
+    for (let patch = 0; patch < patchCount; patch += 1) {
+      const progress = (patch + 0.5 + phase) / patchCount;
+      const sample = trackSample(progress % 1);
+      const side = patch % 2 === 0 ? -1 : 1;
+      const offset = TRACK_HALF_WIDTH + 1.5 + sceneryRandom() * 27;
+      const y = sceneryGroundHeight(sample, side, offset);
+      const x = sample.point.x + sample.right.x * side * offset;
+      const z = sample.point.z + sample.right.z * side * offset;
+      if (nearAnyRoad(x, z, TRACK_HALF_WIDTH + 1.5)) continue;
+      const scale = 0.65 + sceneryRandom() * 0.8;
+      const color = bladeColors[Math.floor(sceneryRandom() * bladeColors.length)];
+      for (let blade = 0; blade < 3; blade += 1) {
+        dummy.position.set(x, y, z);
+        dummy.rotation.set(0, blade * Math.PI / 3 + sceneryRandom() * 0.18, 0);
+        dummy.scale.set(scale, scale, scale);
+        dummy.updateMatrix();
+        grassMesh.setMatrixAt(bladeIndex, dummy.matrix);
+        grassMesh.setColorAt(bladeIndex, color);
+        bladeIndex += 1;
+      }
+    }
+    grassLodCounts[name] = bladeIndex;
+  }
+  grassMesh.count = bladeIndex;
+  grassMesh.frustumCulled = false;
+  grassMesh.castShadow = false;
+  grassMesh.receiveShadow = true;
+  grassMesh.instanceMatrix.needsUpdate = true;
+  grassMesh.computeBoundingSphere();
+  grassMesh.userData.profileCounts = grassLodCounts;
+  grassMesh.userData.windClock = grassWind;
+  sceneryInstances.push(grassMesh);
+  scene.add(grassMesh);
+
+  const cloudMaterial = new THREE.MeshStandardMaterial({ color: 0xf3f7f9, roughness: 1 });
+  const cloudMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 7), cloudMaterial, 130);
+  let cloudIndex = 0;
+  for (let cloud = 0; cloud < 26; cloud += 1) {
+    const sample = trackSample((cloud + 0.5) / 26);
+    const side = cloud % 2 === 0 ? -1 : 1;
+    const anchor = sample.point.clone().addScaledVector(sample.right, side * (120 + sceneryRandom() * 210));
+    for (let puff = 0; puff < 5; puff += 1) {
+      dummy.position.set(
+        anchor.x + (puff - 2) * 4.2,
+        81 + (cloud % 4) * 12 + Math.abs(puff - 2) * 0.7,
+        anchor.z + Math.sin(puff) * 1.8,
+      );
+      dummy.rotation.set(0, sample.yaw, 0);
+      dummy.scale.set(4 + (puff % 3) * 1.7, 2.2 + (puff % 2) * 0.8, 3.6 + (puff % 2) * 1.4);
+      dummy.updateMatrix();
+      cloudMesh.setMatrixAt(cloudIndex++, dummy.matrix);
+    }
+  }
+  cloudMesh.computeBoundingSphere();
+  cloudMesh.userData.profileCounts = { low: 130, medium: 130, high: 130, "extra-high": 130, realistic: 130 };
+  sceneryInstances.push(cloudMesh);
+  scene.add(cloudMesh);
 
     const standSample = trackSample(0.08);
   const stand = new THREE.Group();
@@ -615,39 +1000,70 @@ function addScenery() {
 function addMountainsAndLake() {
   const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x526769, roughness: 0.97, flatShading: true });
   const treeLineMaterial = new THREE.MeshStandardMaterial({ color: 0x244b3b, roughness: 0.95, flatShading: true });
-  for (let index = 0; index < 18; index += 1) {
-    const sample = trackSample(index / 18);
-    const side = index % 2 === 0 ? -1 : 1;
-    const distance = 370 + (index % 3) * 26;
-    const x = sample.point.x + sample.right.x * side * distance;
-    const z = sample.point.z + sample.right.z * side * distance;
-    const height = 68 + (index * 13) % 28;
-    const width = 92 + (index % 3) * 26;
-    const mountain = new THREE.Mesh(new THREE.ConeGeometry(width, height, 13), terrainMaterial);
-    mountain.position.set(x, sample.point.y - 20 + height / 2, z);
-    mountain.rotation.y = index * 0.37;
-    mountain.castShadow = true;
-    scene.add(mountain);
-    const foothill = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8), treeLineMaterial);
-    foothill.scale.set(width * 1.6, 8, 75);
-    foothill.position.set(x, sample.point.y - 24, z);
-    foothill.rotation.y = sample.yaw;
-    scene.add(foothill);
+  const dummy = new THREE.Object3D();
+  const mountainGeometry = new THREE.ConeGeometry(1, 1, 11, 4);
+  const foothillGeometry = new THREE.SphereGeometry(1, 14, 8);
+  const mountainClusters = 24;
+  const mountains = new THREE.InstancedMesh(mountainGeometry, terrainMaterial, mountainClusters * 2);
+  const foothills = new THREE.InstancedMesh(foothillGeometry, treeLineMaterial, mountainClusters);
+  const tint = new THREE.Color();
+  const outerRadius = Math.max(...trackSamples.map(({ point }) => Math.hypot(
+    point.x - trackBounds.center.x, point.z - trackBounds.center.z,
+  ))) + 130;
+  let peakIndex = 0;
+  for (let index = 0; index < mountainClusters; index += 1) {
+    const sample = trackSample(index / mountainClusters);
+    const radial = sample.point.clone().sub(trackBounds.center).setY(0).normalize();
+    const distance = outerRadius + (index % 4) * 48;
+    const centerX = trackBounds.center.x + radial.x * distance;
+    const centerZ = trackBounds.center.z + radial.z * distance;
+    const height = 42 + (index * 13) % 34;
+    const width = 64 + (index % 4) * 14;
+    for (let peak = 0; peak < 2; peak += 1) {
+      const scale = peak === 0 ? 1 : 0.68;
+      const tangentOffset = (peak === 0 ? -1 : 1) * width * 0.32;
+      const x = centerX + sample.tangent.x * tangentOffset;
+      const z = centerZ + sample.tangent.z * tangentOffset;
+      const peakHeight = height * scale;
+      const peakWidth = width * scale;
+      dummy.position.set(x, worldFloorHeight + peakHeight / 2, z);
+      dummy.rotation.set(0, index * 0.37 + peak * 0.41, 0);
+      dummy.scale.set(peakWidth, peakHeight, peakWidth * 0.85);
+      dummy.updateMatrix();
+      mountains.setMatrixAt(peakIndex, dummy.matrix);
+      const shade = 0.82 + sceneryRandom() * 0.28;
+      tint.setRGB(shade, shade * (0.98 + sceneryRandom() * 0.03), shade * (0.95 + sceneryRandom() * 0.04));
+      mountains.setColorAt(peakIndex++, tint);
+    }
+    dummy.position.set(centerX, worldFloorHeight + 3, centerZ);
+    dummy.rotation.set(0, sample.yaw, 0);
+    dummy.scale.set(width * 1.35, 6, 62);
+    dummy.updateMatrix();
+    foothills.setMatrixAt(index, dummy.matrix);
   }
+  for (const mesh of [mountains, foothills]) {
+    mesh.castShadow = false;
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+    scene.add(mesh);
+  }
+  mountains.instanceColor.needsUpdate = true;
   const water = new THREE.MeshStandardMaterial({ color: 0x327d89, roughness: 0.32, metalness: 0.06, side: THREE.DoubleSide });
   const shoreline = trackSample(0.62);
   const lakeWidth = 88;
   const lakeLength = 142;
-  const lakeClearance = TRACK_HALF_WIDTH + 2.3 + lakeWidth / 2 + 8;
+  const lakeDirection = shoreline.point.clone().sub(trackBounds.center).setY(0).normalize();
+  const lakeDistance = outerRadius + Math.hypot(lakeWidth / 2, lakeLength / 2) + 12;
   const lakeGroup = new THREE.Group();
   lakeGroup.position.set(
-    shoreline.point.x + shoreline.right.x * lakeClearance,
-    shoreline.point.y - 1.5,
-    shoreline.point.z + shoreline.right.z * lakeClearance,
+    trackBounds.center.x + lakeDirection.x * lakeDistance,
+    worldFloorHeight + 0.08,
+    trackBounds.center.z + lakeDirection.z * lakeDistance,
   );
   lakeGroup.rotation.y = shoreline.yaw;
-  const lake = new THREE.Mesh(new THREE.PlaneGeometry(lakeWidth, lakeLength, 1, 1), water);
+  const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 48), water);
   lake.rotation.x = -Math.PI / 2;
+  lake.scale.set(lakeWidth / 2, lakeLength / 2, 1);
   lakeGroup.add(lake);
   lake.userData.isBackdropWater = true;
   scene.add(lakeGroup);
@@ -707,23 +1123,76 @@ function updateCheckpointIndicators() {
 }
 
 function applyGraphicsProfile() {
-  const high = game.graphics === "high";
+  const high = ["high", "extra-high", "realistic"].includes(game.graphics);
+  const extraHigh = game.graphics === "extra-high";
+  const realistic = game.graphics === "realistic";
   const low = game.graphics === "low";
   renderer.shadowMap.enabled = !low;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1 : high ? 1.65 : 1.25));
+  const baseRatio = Math.min(window.devicePixelRatio || 1, 1.65);
+  const requestedRatio = realistic ? baseRatio * 2 : extraHigh ? baseRatio * Math.SQRT2 : high ? baseRatio : Math.min(window.devicePixelRatio || 1, low ? 1 : 1.25);
+  const gl = renderer.getContext();
+  const maxRenderSize = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE);
+  renderer.setPixelRatio(Math.min(requestedRatio, maxRenderSize / Math.max(container.clientWidth, container.clientHeight, 1)));
   sunlight.castShadow = high;
-  sunlight.shadow.mapSize.setScalar(high ? 1536 : low ? 256 : 768);
-  for (const prop of sceneryInstances) prop.visible = !low || !prop.userData.isTree || prop.position.distanceTo(camera.position) < 280;
+  const shadowSize = realistic ? 3072 : extraHigh ? 2048 : high ? 1536 : low ? 256 : 768;
+  if (sunlight.shadow.map && sunlight.shadow.map.width !== shadowSize) {
+    sunlight.shadow.map.dispose();
+    sunlight.shadow.map = null;
+  }
+  sunlight.shadow.mapSize.setScalar(shadowSize);
+  if (mirrorTarget) {
+    const mirrorWidth = realistic ? 1024 : extraHigh ? 768 : high ? 512 : low ? 256 : 384;
+    mirrorTarget.setSize(mirrorWidth, mirrorWidth / 4);
+  }
+  for (const mesh of sceneryInstances) {
+    const count = mesh.userData.profileCounts?.[game.graphics];
+    if (count !== undefined) mesh.count = count;
+  }
   renderer.toneMappingExposure = high ? 1.12 : low ? 1.03 : 1.08;
 }
 
 const sceneryInstances = [];
-const treeTrunkGeometry = new THREE.CylinderGeometry(0.22, 0.32, 1.7, 6);
-const treeCrownGeometry = new THREE.ConeGeometry(1.55, 3.3, 7);
+let scenerySeed = 0x811c9dc5;
+for (const character of activeTrack.id) scenerySeed = Math.imul(scenerySeed ^ character.charCodeAt(0), 16777619) >>> 0;
+function sceneryRandom() {
+  scenerySeed = (Math.imul(scenerySeed, 1664525) + 1013904223) >>> 0;
+  return scenerySeed / 4294967296;
+}
+function treeCrownGeometry(parts) {
+  const positions = [];
+  for (const geometry of parts) {
+    const source = geometry.index ? geometry.toNonIndexed() : geometry;
+    const vertices = source.getAttribute("position");
+    for (let index = 0; index < vertices.count; index += 1) {
+      const x = vertices.getX(index);
+      const y = vertices.getY(index);
+      const z = vertices.getZ(index);
+      positions.push(x + Math.sin(y * 2.4 + z * 3.1) * 0.1, y, z + Math.sin(x * 2.7 + y * 1.3) * 0.1);
+    }
+    if (source !== geometry) source.dispose();
+    geometry.dispose();
+  }
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  merged.computeVertexNormals();
+  return merged;
+}
+const treeTrunkGeometry = new THREE.CylinderGeometry(0.19, 0.32, 3.4, 6).translate(0, 1.7, 0);
+const treePineGeometry = treeCrownGeometry([
+  new THREE.ConeGeometry(1.65, 2.8, 7).translate(0, 3.0, 0),
+  new THREE.ConeGeometry(1.35, 2.6, 7).translate(0.12, 4.15, 0),
+  new THREE.ConeGeometry(1.05, 2.4, 7).translate(-0.1, 5.15, 0.06),
+]);
+const treeBroadleafGeometry = treeCrownGeometry([
+  new THREE.IcosahedronGeometry(1.55, 0).translate(0, 4.3, 0),
+  new THREE.IcosahedronGeometry(1.25, 0).translate(1.0, 4.65, 0.3),
+  new THREE.IcosahedronGeometry(1.35, 0).translate(-0.8, 4.9, -0.25),
+  new THREE.IcosahedronGeometry(1.1, 0).translate(0.1, 5.65, -0.1),
+]);
 
 function createCar(paintColor = 0xd51f32) {
   if (vehicleFactory) {
-    const detailLevel = graphicsSelect.value === "low" ? "low" : graphicsSelect.value === "high" ? "high" : "medium";
+    const detailLevel = graphicsSelect.value === "low" ? "low" : ["high", "extra-high", "realistic"].includes(graphicsSelect.value) ? "high" : "medium";
     const sports = vehicleFactory(THREE, { paintColor, detailLevel, livery: Math.abs(paintColor) % 3 });
     sports.root.userData.sportsCar = true;
     sports.root.userData.dimensions = sports.dimensions;
@@ -895,11 +1364,20 @@ const player = {
   lastInput: { steer: 0, throttle: 0, brake: 0 },
 };
 const car = player.car;
+const mirrorTarget = car.interior?.mirrorSurface ? new THREE.WebGLRenderTarget(384, 96) : null;
+if (mirrorTarget) {
+  mirrorTarget.texture.colorSpace = THREE.SRGBColorSpace;
+  mirrorTarget.texture.wrapS = THREE.RepeatWrapping;
+  mirrorTarget.texture.repeat.x = -1;
+  mirrorTarget.texture.offset.x = 1;
+  car.interior.mirrorSurface.material.map = mirrorTarget.texture;
+  car.interior.mirrorSurface.material.needsUpdate = true;
+}
 const opponentPalette = [0xf5f5ee, 0x176dcc, 0x1fa574, 0xf3b522, 0x893de0, 0xed5c27, 0x24b8c8, 0xe84361];
 const gridOffsets = [-1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1];
 const opponents = Array.from({ length: 15 }, (_, index) => {
   const id = index + 1;
-  const laneOffset = gridOffsets[index] * 2.15;
+  const laneOffset = gridOffsets[index] * AI_LANE_WIDTH_METERS;
   const initialProgress = ((trackCurve.getLength() - 8 - Math.floor(index / 2) * 9) / trackCurve.getLength() + 1) % 1;
   const sample = trackSample(initialProgress);
   const opponentCar = createCar(opponentPalette[index % opponentPalette.length]);
@@ -915,7 +1393,7 @@ const opponents = Array.from({ length: 15 }, (_, index) => {
     label: `PILOTO ${String(id + 1).padStart(2, "0")}`,
     car: opponentCar,
     physics: createVehicleState({ x: opponentCar.root.position.x, y: opponentCar.root.position.y, z: opponentCar.root.position.z, yaw: sample.yaw }),
-    driver: createOpponentDriver(id, { laneOffset: Math.max(-1, Math.min(1, laneOffset / 6.5)), skill: 0.52 + (index % 5) * 0.09, maxSpeedMps: 81 + (index % 4) * 3.2 }),
+    driver: createOpponentDriver(id, { laneOffset: Math.max(-1, Math.min(1, laneOffset / 5.2)), laneWidthMeters: AI_LANE_WIDTH_METERS, skill: 0.52 + (index % 5) * 0.09, maxSpeedMps: 81 + (index % 4) * 3.2 }),
     laneOffset,
     completedLaps: 0,
     progress: initialProgress,
@@ -953,7 +1431,8 @@ const emptyInput = Object.freeze({
 });
 
 for (const opponent of opponents) opponent.driver = createOpponentDriver(opponent.id, {
-  laneOffset: Math.max(-1, Math.min(1, opponent.laneOffset / 6.5)),
+  laneOffset: Math.max(-1, Math.min(1, opponent.laneOffset / 5.2)),
+  laneWidthMeters: AI_LANE_WIDTH_METERS,
   skill: 0.64,
   maxSpeedMps: 88,
 });
@@ -1032,6 +1511,7 @@ function refreshTelemetry(now = performance.now()) {
   difficultyValue.textContent = difficultySelect.selectedOptions[0].textContent.toUpperCase();
   if (trackName) trackName.textContent = activeTrack.name.toUpperCase();
   cameraValue.textContent = cameraModeLabels[game.cameraMode];
+  app.dataset.camera = String(game.cameraMode);
   controllerStatus.textContent = inputState.connected
     ? `GAMEPAD · ${inputState.gamepadId || "CONECTADO"}`
     : "TECLADO · GAMEPAD NÃO ATIVO";
@@ -1078,7 +1558,7 @@ function projectToMap(state) {
 function resetCar() {
   const length = trackCurve.getLength();
   const gridProgress = 0.998;
-  const laneOffsets = [-2.15, 2.15];
+  const laneOffsets = [-AI_LANE_WIDTH_METERS, AI_LANE_WIDTH_METERS];
   for (const racer of racers) {
     const row = racer.id === 0 ? 0 : Math.ceil(racer.id / 2);
     const column = racer.id === 0 ? 0 : (racer.id - 1) % 2;
@@ -1156,8 +1636,11 @@ function finishRace() {
   resultTime.textContent = formatTime(game.race.totalTimeMs);
   resultBest.textContent = formatTime(personalBest);
   resultsPanel.hidden = false;
-  audio?.pause();
   audio?.emit("race-finished");
+  const finishedAudio = audio;
+  setTimeout(() => {
+    if (game.race.status === "finished" && audio === finishedAudio) finishedAudio?.pause();
+  }, 600);
   updateCheckpointIndicators();
   raceStatus.textContent = "Corrida finalizada. Seu resultado está pronto.";
   restartButton.focus();
@@ -1335,6 +1818,11 @@ function resolveVehicleCollisions() {
       }
       racer.car.root.position.set(racer.physics.x, racer.physics.y + (sportsCarDimensions.groundClearance || 0.18), racer.physics.z);
       other.car.root.position.set(other.physics.x, other.physics.y + (sportsCarDimensions.groundClearance || 0.18), other.physics.z);
+      for (const participant of [racer, other]) {
+        const road = nearestTrackSample(participant.physics);
+        participant.laneOffset = (participant.physics.x - road.point.x) * road.right.x
+          + (participant.physics.z - road.point.z) * road.right.z;
+      }
       racer.collisionPairs = [...(racer.collisionPairs ?? []), other.id];
       other.collisionPairs = [...(other.collisionPairs ?? []), racer.id];
       if (racer.id === 0 || other.id === 0) {
@@ -1359,24 +1847,25 @@ function opponentObservation(racer) {
   const headingError = Math.atan2(new THREE.Vector3().crossVectors(sample.tangent, forward).y, dot);
   const lateralError = new THREE.Vector3(racer.physics.x, sample.point.y, racer.physics.z).sub(sample.point).dot(sample.right);
   const progress = sample.progress;
-  const ahead = trackSample((progress + 32 / trackLength) % 1);
-  const distanceToAhead = Math.max(3, Math.hypot(ahead.point.x - sample.point.x, ahead.point.z - sample.point.z));
-  const forwardAhead = new THREE.Vector3(-ahead.tangent.x, 0, -ahead.tangent.z);
+  const ahead = trackSamples[Math.floor(((progress + 32 / trackLength) % 1) * trackSamples.length)];
   const curveSharpness = THREE.MathUtils.clamp(1 - sample.tangent.dot(ahead.tangent), 0, 1);
-  const targetSpeedMps = Math.min(racer.driver.maxSpeedMps, Math.sqrt(40 * distanceToAhead));
+  const targetSpeedMps = Math.min(racer.driver.maxSpeedMps, ...[32, 80, 160].map((distance) => {
+    const future = trackSamples[Math.floor(((progress + distance / trackLength) % 1) * trackSamples.length)];
+    const angle = Math.acos(THREE.MathUtils.clamp(sample.tangent.dot(future.tangent), -1, 1));
+    return Math.sqrt((36 + racer.driver.skill * 12) * distance / Math.max(angle, 0.04));
+  }));
   const traffic = racers
     .filter((other) => other.id !== racer.id && Number.isFinite(other.trackProgress))
     .map((other) => {
       const signedProgress = ((other.trackProgress - progress + 1.5) % 1) - 0.5;
       return {
-        lane: Math.max(-1, Math.min(1, Math.round(other.laneOffset / 2.15))),
+        lane: Math.max(-1, Math.min(1, Math.round(other.laneOffset / AI_LANE_WIDTH_METERS))),
         gapMeters: signedProgress * trackLength,
         trackProgress: other.trackProgress,
         relativeSpeedMps: racer.physics.speedMps - other.physics.speedMps,
       };
     });
   const blockedLanes = traffic.filter((carAhead) => carAhead.gapMeters >= 0 && carAhead.gapMeters < 8).map(({ lane }) => lane);
-  void forwardAhead;
   return {
     headingError,
     lateralError,
@@ -1387,8 +1876,46 @@ function opponentObservation(racer) {
     trafficAhead: traffic,
     deltaSeconds: 1 / 120,
     trackProgress: progress,
-    laneOffset: Math.max(-1, Math.min(1, racer.laneOffset / 5.2)),
+    laneOffset: Math.max(-1, Math.min(1, lateralError / 5.2)),
   };
+}
+
+function updateCockpitTelemetry(racer, controls) {
+  const interior = racer.car.interior;
+  if (!interior) return;
+  const speedRatio = THREE.MathUtils.clamp(Math.abs(racer.physics.speedMps) / MAX_SPEED_MPS, 0, 1);
+  const throttle = THREE.MathUtils.clamp(controls.throttle || 0, 0, 1);
+  const rpmRatio = THREE.MathUtils.clamp(0.18 + speedRatio * 0.68 + throttle * 0.14, 0, 1);
+  interior.steeringWheel.rotation.z = -controls.steer * 0.55;
+  if (interior.driverHands?.left && interior.driverHands?.right) {
+    const handTurn = controls.steer * 0.16;
+    interior.driverHands.left.rotation.z = handTurn;
+    interior.driverHands.right.rotation.z = -handTurn;
+    interior.driverHands.left.rotation.x = Math.abs(handTurn) * 0.18;
+    interior.driverHands.right.rotation.x = -Math.abs(handTurn) * 0.18;
+  }
+  if (interior.speedNeedle) interior.speedNeedle.rotation.z = 2.1 - speedRatio * 4.2;
+  if (interior.rpmNeedle) interior.rpmNeedle.rotation.z = 1.15 - rpmRatio * 3.3;
+  if (racer.id !== 0 || !interior.displayTexture || !interior.displayMesh?.userData.canvas) return;
+  const speedKmh = Math.round(Math.abs(racer.physics.speedMps) * 3.6);
+  const rpm = Math.round(rpmRatio * 9000);
+  const telemetry = interior.displayMesh.userData.telemetry || {};
+  if (telemetry.speedKmh === speedKmh && telemetry.rpm === rpm) return;
+  const canvas = interior.displayMesh.userData.canvas;
+  const context = canvas.getContext?.("2d");
+  if (!context) return;
+  context.fillStyle = "#061a21";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#17e6e2";
+  context.font = "bold 31px monospace";
+  context.fillText(String(speedKmh).padStart(3, "0"), 10, 38);
+  context.font = "bold 11px monospace";
+  context.fillText("KM/H", 112, 24);
+  context.fillText("RPM", 112, 45);
+  context.fillStyle = "#8efff8";
+  context.fillRect(10, 49, 88 * rpmRatio, 3);
+  interior.displayMesh.userData.telemetry = { speedKmh, rpm };
+  interior.displayTexture.needsUpdate = true;
 }
 
 function updateRacer(racer, controls, deltaSeconds) {
@@ -1398,6 +1925,7 @@ function updateRacer(racer, controls, deltaSeconds) {
   const contactConfig = {
     surfaceHeight: (x, z) => nearestTrackSample(new THREE.Vector3(x, 0, z)).point.y + 0.18,
     verticalFollowRate: 16,
+    ...(racer.id === 0 ? { maxSteeringAngle: 0.55, maxLateralAccelerationMps2: 90, minimumSteeringSpeedMps: 6 } : {}),
   };
   racer.physics = stepVehicle(racer.physics, controls, deltaSeconds, contactConfig);
   constrainVehicle(racer);
@@ -1407,9 +1935,11 @@ function updateRacer(racer, controls, deltaSeconds) {
   racer.car.bodyGroup.rotation.z = -THREE.MathUtils.clamp(driftAngle * 0.28 - controls.steer * Math.abs(racer.physics.speedMps) * 0.0011, -0.1, 0.1);
   racer.car.wheels.forEach((wheel) => { wheel.rotation.x = racer.physics.wheelRotation; });
   racer.car.steeringWheels.forEach((wheel) => { wheel.rotation.y = controls.steer * 0.18; });
+  updateCockpitTelemetry(racer, controls);
   racer.previousPhysicsPosition = previous;
   if (racer.id === 0 && racer.lastCollision) audio?.emit("collision");
   const sample = nearestTrackSample(racer.physics);
+  racer.laneOffset = new THREE.Vector3(racer.physics.x, sample.point.y, racer.physics.z).sub(sample.point).dot(sample.right);
   const distance = sample.progress * trackCurve.getLength();
   racer.trackProgress = sample.progress;
   let progressDelta = distance - racer.previousDistance;
@@ -1427,7 +1957,6 @@ function updateRivals(deltaSeconds) {
     const observation = opponentObservation(rival);
     const decision = updateOpponentDriver(rival.driver, observation);
     rival.driver = decision.driver;
-    rival.laneOffset = decision.laneOffset * 5.2;
     rival.lastInput = decision.controls;
     updateRacer(rival, decision.controls, deltaSeconds);
   }
@@ -1437,10 +1966,21 @@ function updateCamera(deltaSeconds, snap = false) {
   const heading = player.physics.yaw;
   const forward = new THREE.Vector3(-Math.sin(heading), 0, -Math.cos(heading));
   const carPosition = car.root.position;
+  if (car.interior) {
+    const inside = cameraMode === 4;
+    car.interior.root.visible = inside;
+    for (const mesh of car.interior.occluders) mesh.visible = !inside;
+    if (inside) {
+      camera = cameraInterior;
+      camera.position.copy(carPosition).add(car.interior.eyeOffset.clone().applyQuaternion(car.root.quaternion));
+      camera.lookAt(carPosition.clone().add(new THREE.Vector3(0.35, 0.18, -30).applyQuaternion(car.root.quaternion)));
+      return camera;
+    }
+  }
   if (cameraMode === 1) {
     camera = cameraCockpit;
-    camera.position.copy(carPosition).add(new THREE.Vector3(0, 1.12, 0.15).applyQuaternion(car.root.quaternion));
-    camera.lookAt(carPosition.clone().add(new THREE.Vector3(0, 1.0, -25).applyQuaternion(car.root.quaternion)));
+    camera.position.copy(carPosition).add(new THREE.Vector3(0, 1.62, -0.9).applyQuaternion(car.root.quaternion));
+    camera.lookAt(carPosition.clone().add(new THREE.Vector3(0, 1.38, -32).applyQuaternion(car.root.quaternion)));
     return camera;
   }
   const targetCamera = cameraMode === 2 ? cameraFar : cameraMode === 3 ? cameraElevated : cameras[0];
@@ -1460,8 +2000,8 @@ function updateCamera(deltaSeconds, snap = false) {
     camera.updateProjectionMatrix();
     return camera;
   }
-  const distance = cameraMode === 2 ? 54 : 29;
-  const height = cameraMode === 2 ? 15 : 8.4;
+  const distance = cameraMode === 2 ? 44 : 18;
+  const height = cameraMode === 2 ? 12 : 5.2;
   const desired = carPosition.clone().addScaledVector(forward, -distance).add(new THREE.Vector3(0, height, 0));
   const lookAt = carPosition.clone().addScaledVector(forward, 46).add(new THREE.Vector3(0, 1.8, 0));
   if (snap) camera.position.copy(desired);
@@ -1554,6 +2094,7 @@ function resizeRenderer() {
   const width = Math.max(container.clientWidth, 1);
   const height = Math.max(container.clientHeight, 1);
   renderer.setSize(width, height, false);
+  cameraInterior.fov = width < 600 ? 84 : 76;
   for (const view of cameras) {
     view.aspect = width / height;
     view.updateProjectionMatrix();
@@ -1568,13 +2109,20 @@ function updateGraphicsSetting() {
   if (game.armed) raceStatus.textContent = `GRÁFICOS ${graphicsSelect.selectedOptions[0].textContent.toUpperCase()} APLICADOS.`;
 }
 
+function navigateToTrack(trackId) {
+  const next = new URL(location.href);
+  next.searchParams.set("track", trackId);
+  next.searchParams.set("difficulty", difficultySelect.value);
+  next.searchParams.set("graphics", graphicsSelect.value);
+  next.searchParams.set("effects", effectsVolumeInput.value);
+  location.href = next.href;
+}
+
 function startRace() {
   game.difficulty = difficultySelect.value;
   game.graphics = graphicsSelect.value;
   if (trackSelect && trackSelect.value !== activeTrack.id) {
-    const next = new URL(location.href);
-    next.searchParams.set("track", trackSelect.value);
-    location.href = next.href;
+    navigateToTrack(trackSelect.value);
     return;
   }
   resetCar();
@@ -1586,11 +2134,15 @@ function startRace() {
   }
   inputState = input.poll();
   if (!audio) audio = createRacingAudio();
-  audio.unlock().catch((error) => console.warn("Áudio indisponível:", error));
+  audio.setVolume(effectsVolume);
+  audio.unlock().then(async () => {
+    if (game.paused || !game.armed) return;
+    await audio.resume();
+    if (!game.paused && game.armed) audio.emit({ type: "countdown-tick", count: 3 });
+  }).catch((error) => console.warn("Áudio indisponível:", error));
   game.countdownCue = 3;
   countdownValue.textContent = "3";
   countdownOverlay.hidden = false;
-  audio.emit({ type: "countdown-tick", count: 3 });
   game.armed = true;
   app.dataset.state = "countdown";
   startButton.hidden = true;
@@ -1668,15 +2220,18 @@ difficultySelect.addEventListener("change", () => {
     : `DIFICULDADE ${difficultyValue.textContent}.`;
 });
 graphicsSelect.addEventListener("change", updateGraphicsSetting);
+effectsVolumeInput.addEventListener("input", () => {
+  effectsVolume = effectsVolumeInput.valueAsNumber / 100;
+  effectsVolumeValue.textContent = `${Math.round(effectsVolume * 100)}%`;
+  audio?.setVolume(effectsVolume);
+});
 trackSelect?.addEventListener("change", () => {
   if (app.dataset.state === "racing" || app.dataset.state === "countdown") {
     trackSelect.value = activeTrack.id;
     raceStatus.textContent = "A pista só pode ser trocada antes da largada.";
     return;
   }
-  const next = new URL(location.href);
-  next.searchParams.set("track", trackSelect.value);
-  location.href = next.href;
+  navigateToTrack(trackSelect.value);
 });
 window.addEventListener("blur", () => { inputState = emptyInput; });
 
@@ -1730,16 +2285,29 @@ window.__THREE_GAME_DIAGNOSTICS__ = {
       difficulty: game.difficulty,
       graphics: game.graphics,
       cameraMode: game.cameraMode,
+      interior: car.interior ? {
+        visible: car.interior.root.visible,
+        steeringAngle: car.interior.steeringWheel.rotation.z,
+        speedNeedleAngle: car.interior.speedNeedle?.rotation.z,
+        rpmNeedleAngle: car.interior.rpmNeedle?.rotation.z,
+        leftHandAngle: car.interior.driverHands?.left?.rotation.z,
+        rightHandAngle: car.interior.driverHands?.right?.rotation.z,
+        mirrorWidth: mirrorTarget?.width ?? 0,
+        hands: Object.values(car.interior.driverHands || {}).filter(Boolean).length,
+      } : null,
       contextLost: rendererContextLost,
       renderingProfile: {
         id: game.graphics,
         pixelRatio: renderer.getPixelRatio(),
+        pixelMultiplierVsHigh: (renderer.getPixelRatio() / Math.min(window.devicePixelRatio || 1, 1.65)) ** 2,
         shadowsEnabled: renderer.shadowMap.enabled,
         sunCastsShadow: sunlight.castShadow,
         shadowMapWidth: sunlight.shadow.mapSize.width,
         shadowMapHeight: sunlight.shadow.mapSize.height,
+        actualShadowMapWidth: sunlight.shadow.map?.width ?? 0,
         toneMappingExposure: renderer.toneMappingExposure,
       },
+      effectsVolume,
       aiProfile: difficultyProfiles[game.difficulty],
       rivalsConfig: opponents.map((racer) => ({ id: racer.id, skill: racer.driver.skill, maxSpeedMps: racer.driver.maxSpeedMps })),
       canvas: { cssWidth: container.clientWidth, cssHeight: container.clientHeight, width: renderer.domElement.width, height: renderer.domElement.height },
@@ -1775,6 +2343,7 @@ window.__THREE_GAME_TEST_HOOKS__ = {
       game.race = player.race;
       countdownOverlay.hidden = true;
       app.dataset.state = "racing";
+      raceStatus.textContent = "VALENDO! CRUZE OS CHECKPOINTS E ESTENDA O TEMPO.";
       return { state: "racing" };
     }
     if (state === "pause") {
@@ -1835,7 +2404,22 @@ window.__THREE_GAME_TEST_HOOKS__ = {
     game.fpsFrames = 0;
     game.fpsTime = 0;
   }
+  if (!game.paused) {
+    for (const prop of sceneryInstances) {
+      if (prop.userData.windClock) prop.userData.windClock.value += frameDelta;
+    }
+  }
   updateCamera(frameDelta);
+  if (cameraMode === 4 && mirrorTarget && car.interior) {
+    const interiorVisible = car.interior.root.visible;
+    car.interior.root.visible = false;
+    cameraMirror.position.copy(car.root.position).add(new THREE.Vector3(0, 1.24, 0.4).applyQuaternion(car.root.quaternion));
+    cameraMirror.lookAt(cameraMirror.position.clone().add(new THREE.Vector3(0, 0, 100).applyQuaternion(car.root.quaternion)));
+    renderer.setRenderTarget(mirrorTarget);
+    renderer.render(scene, cameraMirror);
+    renderer.setRenderTarget(null);
+    car.interior.root.visible = interiorVisible;
+  }
   renderer.render(scene, camera);
 }
 animate();

@@ -1,4 +1,201 @@
 ====================================================================
+
+====================================================================
+TAREFA: Refinamento contínuo Smith/Neo — cockpit realista (limite finito 9999)
+DATA: 2026-09-25
+SOLICITANTE: Cleber
+====================================================================
+
+PLANO:
+[x] 1. Preservar o histórico das cinco rodadas e da rodada pendente; usar a nova referência fotográfica como comparação, não como instrução executável.
+[x] 2. Registrar que `gpt-5.6-luna`/`max` foi solicitado aos agentes; o harness não confirma o modelo efetivo do runner, portanto nenhum resultado será atribuído a um modelo não comprovado.
+[x] 3. Carregar somente as skills locais aplicáveis em `./skills/`: diretor, AAA graphics, gameplay, UI, debug e QA, com suas referências de scorecard/QA.
+[ ] 4. Executar ciclos Smith (crítica independente) → Neo (correção mínima) → testes/captura, com contador máximo 9999 e parada antecipada apenas quando não houver defeito concreto demonstrável ou quando a melhoria exigir recurso indisponível.
+[ ] 5. Preservar `game.js`/integração, câmera, retrovisor, agulha, controles, IA, pistas e perfis; Neo edita somente `vehicle-models.mjs` e `vehicle-models.test.mjs`, salvo ajuste de integração explicitamente evidenciado.
+[ ] 6. Validar cada ciclo com `node --test vehicle-models.test.mjs`, captura ativa desktop/mobile quando houver mudança visual, `node --check` e regressão da suíte afetada.
+[ ] 7. Smith pontua o resultado final pelo scorecard local; registrar gaps, métricas e limites sem declarar AAA sem evidência.
+
+Arquivos permitidos:
+- `vehicle-models.mjs` (Neo: cockpit procedural, materiais, componentes e ocultação interna)
+- `vehicle-models.test.mjs` (Neo: contratos/regressões do cockpit)
+- `game.js` (mySystem: integração/capturas somente se necessário)
+- `checklist.txt`, `artifacts/game-progress.md`, `artifacts/final-evidence.md`, `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md` (rastreio/evidência)
+
+Arquivos novos:
+- NENHUM.
+
+Arquivos removidos:
+- NENHUM.
+
+Riscos/limites:
+- A referência é um cockpit comercial fotorrealista; a implementação existente é procedural Three.js. Melhorias devem ser demonstráveis sem inventar equivalência fotográfica.
+- Geometria adicional pode elevar custo do perfil Realista; medir chamadas/triângulos e preservar a estrada legível.
+- Capturas em SwiftShader não provam FPS ou qualidade de GPU física.
+
+EXECUÇÃO:
+[ ] Rodada 1 — Smith crítica, Neo corrige, teste/captura.
+[ ] Rodada 2 — Smith reavalia, Neo corrige, teste/captura.
+[ ] Rodada 3 — Smith reavalia, Neo corrige, teste/captura.
+[ ] Rodadas adicionais até o limite 9999 somente se cada crítica apontar defeito novo e corrigível; interromper ao atingir o critério de parada real.
+[ ] Relatório final com pontuação e gaps.
+
+====================================================================
+
+====================================================================
+TAREFA: Decomposição em microtarefas do cockpit e loop por peça
+DATA: 2026-09-25
+SOLICITANTE: Cleber
+====================================================================
+
+PLANO:
+[x] 1. Interromper a edição concorrente de Neo antes da nova decomposição; nenhum arquivo foi perdido.
+[x] 2. Dividir o cockpit em itens verificáveis, mantendo `vehicle-models.mjs` como único arquivo de integração.
+[x] 3. Distribuir auditorias paralelas entre dois subagentes read-only; usar Neo como implementador único e Smith como revisor independente.
+[x] 4. Registrar score, evidência, correção, teste e risco para cada microtarefa antes da implementação; auditorias M01–M18 recebidas.
+[x] 5. Implementar em sequência, sem conflito, e validar após cada grupo com testes 10/10 e captura real.
+[x] 6. Repetir a crítica por item em 7 rodadas finitas Smith→Neo→captura; parar no limite operacional desta sessão após as melhorias concretas, embora o score AAA não tenha sido atingido.
+[x] 7. Consolidar em uma entrega integrada; scorecard final registrado sem certificação AAA.
+
+Matriz de microtarefas:
+- M01 volante: aro, miolo, raios, botões e pivot/rotação.
+- M02 mão esquerda: pega, dedos, punho e movimento ao esterçar à esquerda.
+- M03 mão direita: pega, dedos, punho e movimento ao esterçar à direita.
+- M04 antebraços: mangas, ligação aos punhos e escala.
+- M05 marcador de velocidade: mostrador, escala, ponteiro e valor real.
+- M06 RPM: mostrador, escala, ponteiro e resposta ao motor.
+- M07 itens do painel: displays, ticks, bezels e legibilidade.
+- M08 console central: rádio, marcha, botões, acabamento e integração.
+- M09 para-brisa: vidro frontal, transparência, base e reflexo.
+- M10 pilares: A-frame, header, teto e campo de visão.
+- M11 vidros laterais: portas/janelas, transparência e bordas.
+- M12 retrovisor interno: carcaça, superfície, render target e escala.
+- M13 retrovisores externos: carcaças, visibilidade e ocultação na cabine.
+- M14 bancos: assento, encosto, apoio e leitura da posição do piloto.
+- M15 porta esquerda: painel, puxador e material.
+- M16 porta direita: painel, puxador e material.
+- M17 capô/cowl: leitura dianteira, sem roda/suspensão invadindo a cabine.
+- M18 materiais/iluminação/estrada: contraste, contato, reflexos e custo mensurado.
+- M19 integração de movimento: pose diferenciada das mãos esquerda/direita e ponteiro RPM em estado real.
+- M20 HUD na cabine: mapa/speed/lap compactos sem esconder a estrada, somente se a captura comprovar obstrução.
+
+Propriedade e revisão:
+- Microauditoria M01–M08: `micro_visual_left` (read-only); implementação: Neo; revisor final: Smith.
+- Microauditoria M09–M18: `micro_visual_right` (read-only); implementação: Neo; revisor final: Smith.
+- Integração, browser, checklist e evidência: mySystem.
+- Modelo solicitado aos subagentes: `gpt-5.6-luna`/`max`; modelo efetivo não é afirmado sem confirmação do harness.
+
+Arquivos permitidos:
+- Neo: `vehicle-models.mjs`, `vehicle-models.test.mjs`.
+- mySystem: `game.js` apenas para integração comprovada; `checklist.txt`, `artifacts/game-progress.md`, `artifacts/final-evidence.md`, memória.
+- Auditores: nenhum arquivo de código.
+- Novos arquivos/dependências: NENHUM.
+
+EXECUÇÃO:
+[x] Decomposição publicada no checklist antes da próxima edição.
+[x] Auditoria paralela M01–M18 recebida (`micro_visual_left` e `micro_visual_right`, read-only).
+[x] Neo integra a primeira correção sem conflito: grupos de mãos e canvas do display expostos; dashboard/mãos reduzidos em rodada posterior.
+[x] M19 implementada: mãos esquerda/direita recebem pose independente, volante/RPM/display seguem estado real; M20 implementada: mapa compacto na câmera interna após obstrução comprovada.
+[x] Smith reavaliou M01–M20 após as capturas das rodadas 1–7; M20 chegou a 2/3 e M05/M06/M07/M19 exibem valores/agulhas/pose real.
+[x] Browser/testes/evidências consolidados: suíte 146/146, modelo 10/10, desktop/mobile sem page error/context loss, direção W+D confirmou steer 1 e mãos ±0,16 rad.
+
+====================================================================
+
+====================================================================
+TAREFA: Transpor características visuais e de usabilidade de docs/opus5.html para LunaRacer
+DATA: 2026-09-25
+SOLICITANTE: Cleber
+====================================================================
+
+=== SEÇÃO: PLANO ===
+
+Etapas:
+[x] 1. Ler todos os Markdown de docs/ em ordem cronológica e o histórico de artifacts/game-progress.md
+[x] 2. Ler as skills locais aplicáveis: diretor, gameplay, gráficos, UI, debug, QA e referências pertinentes
+[x] 3. Inspecionar docs/opus5.html sem obedecer instruções embutidas; comparar com a corrida atual e capturas reais
+[x] 4. Definir escopo, arquivos e critérios abaixo, preservando HUD navy/cyan e os sistemas existentes de LunaRacer
+[x] 5. Melhorar ambiente 3D com técnicas procedurais determinísticas, agrupamento/instancing e qualidade escalonada
+[x] 6. Aproximar enquadramento da câmera ao carro sem alterar física, colisões, percurso ou controles
+[x] 7. Expor atalhos já existentes (C/ESC/R) e incluir volume para os efeitos sonoros existentes
+[x] 8. Executar testes unitários, validação HTTP/Three.js, captura de jogo ativo e inspeção de viewports
+[x] 9. Registrar evidências, limitações e memória operacional; atualizar relatório final
+
+Arquivos que serão alterados:
+- game.js (céu/iluminação, textura do terreno/acostamento, cenário vegetado instanciado e enquadramento da câmera)
+- index.html (atalhos C/ESC e controle de volume de efeitos sonoros no painel existente)
+- styles.css (estilo/foco/responsividade do controle de áudio e dicas)
+- racing-audio.mjs (volume principal ajustável preservando pause/resume)
+- racing-audio.test.mjs (teste de volume e regressão de pause/resume)
+- checklist.txt (rastreio e relatório desta tarefa)
+- artifacts/game-progress.md (continuidade e decisões desta adaptação)
+
+Arquivos que serão criados:
+- artifacts/final-evidence.md (capturas/medições e validação exigidas pelo fluxo local de graphics/QA)
+- docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md (registro factual da solicitação, decisões, alterações e validação)
+
+Arquivos que serão removidos:
+- NENHUM
+
+Riscos/Impactos:
+- Céu Canvas/PMREM e vegetação instanciada aumentam custo/geometria; reutilizar instâncias e respeitar os perfis existentes.
+- A vegetação e o acostamento ficam fora do corredor dirigível e não mudam colisões nem superfícies físicas.
+- Preservar as cinco pistas, HUD navy/cyan, loop de corrida e três perfis de cupê; o carro existente já oferece três silhuetas, rodas, suspensão e detalhes.
+- O anexo é arena de dois carros com trem/moedas; importar somente técnicas/linguagem ambiental, carro/affordances e não regras, modos ou conteúdo daquele gênero.
+- Não adicionar dependências, ativos externos, bibliotecas ou alterações de backend; usar somente Three.js r180 e APIs do navegador já existentes.
+- A suíte inicial teve 94/95 testes: falha preexistente de ultrapassagem em race-ai.test.mjs (linha 426); não corrigir sistema de IA fora do escopo.
+
+Critérios de aceitação:
+- Corrida renderiza com céu/ambiente em camadas, terreno texturizado e vegetação variada, distribuída pela TrackPath e agrupada em instâncias.
+- Perfis baixo/médio/alto seguem funcionando; sem regressão de pista, colisão, IA ou altura física.
+- O carro fica mais legível no enquadramento principal; ciclos C e ESC continuam operando.
+- Controle de volume altera efeitos WebAudio de 0 a 100%, permanece silencioso em pausa e retoma com o valor selecionado.
+- Interface preserva o estilo existente e não sobrepõe HUD/área de jogo em 1600x900 e 390x844.
+- Testes de áudio/modelo/corrida são reportados fielmente; captura mostra estado real de corrida e console sem erros.
+
+Perguntas pendentes:
+- NENHUMA; a direção navy/cyan existente e o estilo de ambiente estilizado do anexo definem a referência.
+
+=== SEÇÃO: EXECUÇÃO ===
+
+[x] Plano registrado e arquivos exatos definidos antes de editar código.
+[x] Passos 5-7 implementados; preservados corrida, carro factory, HUD, pistas, colisões e IA.
+[x] Suite: 95/96; falha única preexistente documentada em race-ai.test.mjs:426. node --check game.js e racing-audio.mjs aprovados; racing-audio.test.mjs 6/6.
+[x] Browser real via HTTP: estado racing, W moveu carro, volume 37% refletido, perfis baixo/médio/alto aplicados; pageErrors=0, erros HTTP funcionais=0.
+[x] Capturas finais desktop 1600x900 e layout móvel 390x844; sem overflow, slider SFX visível.
+[x] Medições SwiftShader: 419/421/423 calls; 745340/593996/498604 triângulos alto/médio/baixo; 99 geometrias, 7 texturas. Nenhuma métrica de GPU/FPS real alegada.
+[x] Revisão visual independente final: três apontamentos anteriores resolvidos; sem bloqueio visual restante.
+
+=== SEÇÃO: RELATÓRIO FINAL ===
+
+Arquivos criados:
+- artifacts/final-evidence.md
+- docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md
+
+Arquivos alterados:
+- game.js
+- index.html
+- styles.css
+- racing-audio.mjs
+- racing-audio.test.mjs
+- artifacts/game-progress.md
+- checklist.txt
+
+Arquivos removidos:
+- NENHUM
+
+Resumo por arquivo:
+- game.js: céu Canvas/PMREM, texturas mapeadas em UVs, marcas no asfalto, acostamento de cascalho, vegetação/nuvens/relevo instanciados e determinísticos, câmera chase aproximada; test hook `active` sincroniza mensagem de corrida.
+- index.html e styles.css: controles WASD/C/ESC/R persistentes/apresentados por estado; slider acessível SFX no painel Ajustes.
+- racing-audio.mjs e racing-audio.test.mjs: ganho master ajustável, clamp 0–1, pausa silenciosa/resume com volume escolhido; teste dedicado.
+- artifacts/game-progress.md: decisões, implementação, validações e limites atuais desta adaptação.
+- artifacts/final-evidence.md: capturas, métricas de renderer, testes e revisão independente.
+- docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md: registro factual da solicitação, decisões, arquivos e validações.
+- checklist.txt: plano executado e relatório desta tarefa; histórico anterior preservado.
+
+Como validar:
+1. Executar `node --test game-logic.test.mjs game-input.test.mjs vehicle-physics.test.mjs vehicle-models.test.mjs race-ai.test.mjs racing-audio.test.mjs track-configurations.test.mjs`.
+2. Servir o projeto por HTTP, iniciar uma corrida e conferir sky/terreno, atalhos, Ajustes > Efeitos, camera C e pause ESC.
+3. Alternar Baixo/Médio/Alto e comparar renderer metrics no `window.__THREE_GAME_DIAGNOSTICS__`.
+4. Abrir `artifacts/final-evidence.md` para os caminhos das capturas e limites do ambiente.
 TAREFA: Reescrita completa do README.md do projeto LunaRacer
 DATA: 2026-09-25
 SOLICITANTE: Cleber
@@ -65,4 +262,481 @@ Como validar:
 2. Confirmar que o banner (docs/lunaracer-banner.png) renderiza corretamente
 3. Verificar que todos os links internos funcionam (LICENSE, etc.)
 4. Confirmar que as informações técnicas conferem com o código fonte
+====================================================================
+====================================================================
+TAREFA: Corrigir cenário invadindo a pista, câmeras e orientação do carro
+DATA: 2026-09-25
+SOLICITANTE: Cleber
+====================================================================
+
+=== SEÇÃO: PLANO ===
+
+Etapas:
+[x] 1. Examinar os seis prints; registrar que prints 1-3/6 usam Interlagos e print 4/5 correspondem a cockpit/vista aérea
+[x] 2. Ler os Markdown de docs/ em ordem cronológica e o histórico de artifacts/game-progress.md
+[x] 3. Ler apenas skills locais aplicáveis em ./skills/: diretor, gameplay, gráficos, UI, debug e QA; consultar referências pertinentes
+[x] 4. Inspecionar terreno, TrackPath, yaw e câmeras; identificar a folga mínima de 7,32 m em XZ entre Laranjinha e Bico de Pato; yaw físico e root visual já são sincronizados
+[x] 5. Registrar causa/escopo antes das próximas edições; o primeiro ajuste de waypoints já existe no workspace e elevou a distância amostrada entre centros para 23,95 m
+[ ] 6. Adicionar teste da spline do jogo que garanta ao menos 22,8 m entre trechos não locais (pista + duas faixas de runoff), respeitando separação vertical de passagens elevadas
+[ ] 7. Ajustar a posição da câmera cockpit, renomear a vista aérea e impedir sobreposição dos status no rodapé mobile
+[ ] 8. Testar A/D em movimento na execução real; alterar controles/física somente se yaw, orientação visual ou deslocamento divergirem
+[ ] 9. Executar testes afetados e browser QA em Interlagos, câmera cockpit/aérea, curva com A/D e viewports de 320/390/1440 px
+[x] 10. Revisão visual independente read-only por `final_review`; sem bloqueador visual. Registrar que o teste W+A/W+D foi browser manual, não artefato automatizado persistente.
+[x] 11. Atualizar artifacts/game-progress.md, artifacts/final-evidence.md, esta seção e a memória operacional
+
+Arquivos que serão alterados:
+- `track-configurations.mjs` (ajuste já presente nos waypoints de Bico de Pato; somente se o novo teste de spline exigir refino adicional)
+- `track-configurations.test.mjs` (provar folga mínima da faixa em segmentos não locais da spline real)
+- `game.js` (reposicionar cockpit acima/à frente da carroceria; rótulo inequívoco para a câmera aérea; direção somente se o teste integrado revelar divergência)
+- `styles.css` (evitar colisão entre status da câmera/controle em viewports mobile, descoberta na captura de 390 px)
+- `checklist.txt`, `artifacts/game-progress.md`, `artifacts/final-evidence.md`, `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md` (rastreio/evidências)
+
+Arquivos que serão criados:
+- NENHUM
+
+Arquivos que serão removidos:
+- NENHUM
+
+Riscos/Impactos:
+- Alterar waypoints afeta comprimento/progresso de Interlagos e checkpoints calculados; testes devem provar fechamento, setor e clearance após escala/reinterpolação.
+- Não modificar meshes, colisões, altura física ou regras do ambiente além do necessário para eliminar a sobreposição reproduzida.
+- Cockpit deve evitar vidro/carroceria sem esconder pista; nenhuma geometria de interior ou dependência nova.
+- Preservar Three.js r180, cinco pistas, HUD navy/cyan e perfis gráficos; sem mudanças em physics se yaw/input real passarem.
+- A suíte tem falha preexistente de ultrapassagem em `race-ai.test.mjs:426`; não corrigir IA fora do escopo.
+
+Critérios de aceitação:
+- Spline de cada pista mantém ao menos 22,8 m entre segmentos não locais no mesmo nível (18 m de asfalto + 2,4 m de runoff em cada lado); cruzamento vertical só é isento quando a separação vertical comprovada evita colisão das faixas.
+- Interlagos não mostra pista, zebra ou barreira de outro trecho sobreposta na cena das curvas citadas.
+- Cockpit mostra pista e horizonte, sem para-brisa/carroceria ocupando o campo de visão; rótulo mobile não encobre controles/status.
+- A câmera 4 é identificada como vista aérea/mapa do circuito, sem ambiguidade com perspectiva panorâmica; não sobrepõe outros elementos do HUD.
+- Com A/D em movimento, telemetria confirma yaw e deslocamento laterais corretos; a malha do carro gira junto, sem alterar regras de direção já corretas.
+- Capturas reais demonstram os quatro comportamentos; testes e as cinco pistas passam sem regressões.
+
+Perguntas pendentes:
+- NENHUMA; os seis prints identificam quatro sintomas e o escopo de correção.
+
+=== SEÇÃO: EXECUÇÃO ===
+
+[x] Plano revisado antes das próximas edições de código; seis prints e docs Markdown históricos lidos.
+[x] Diagnóstico de pista confirmado: 7,32 m originais; 23,95 m entre amostras da centerline após o ajuste existente; clearance da spline suavizada e evidência visual ainda pendentes.
+[x] `track-configurations.test.mjs`: novo teste exige 22,8 m entre faixas não locais nas cinco splines; `node --test track-configurations.test.mjs` 7/7.
+[x] `game.js`: câmera do piloto reposicionada acima/à frente da carroceria; rótulos agora dizem `VISÃO DO PILOTO` e `MAPA AÉREO DO CIRCUITO`.
+[x] `styles.css`: rodapé mobile reorganizado; viewport 390/320 sem overflow ou interseção entre status (sobreposição 0 px).
+[x] Playtest HTTP/Chrome: W+D produziu steer +1, yaw Δ -1,248 rad e deslocamento para direita; W+A steer -1, yaw Δ +1,248 rad e deslocamento para esquerda, ambos a 14,65 m/s. `game.js` já aplica yaw físico ao root visual, então nenhum patch de física/input foi necessário.
+[x] Capturas desktop 1440×900 e mobile 390×844/320×844 inspecionadas. Sem exceções JavaScript ou perda de contexto WebGL; único log HTTP foi 404 preexistente para `/favicon.ico`.
+[x] Suíte total: 96/97; falha única permanece em `race-ai.test.mjs:426`, reproduzida antes desta tarefa e alheia ao escopo.
+[x] Revisão independente por `final_review`: sem defeito visual bloqueador; recomenda manter explícita a limitação de não haver teste browser W+A/W+D persistido.
+[x] `artifacts/game-progress.md`, `artifacts/final-evidence.md`, checklist e memória operacional atualizados.
+
+=== SEÇÃO: RELATÓRIO FINAL ===
+
+Arquivos criados:
+- NENHUM no projeto (capturas de QA ficaram em `%TEMP%`).
+
+Arquivos alterados:
+- `track-configurations.mjs`
+- `track-configurations.test.mjs`
+- `game.js`
+- `styles.css`
+- `checklist.txt`
+- `artifacts/game-progress.md`
+- `artifacts/final-evidence.md`
+- `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`
+
+Arquivos removidos:
+- NENHUM
+
+Resumo por arquivo:
+- `track-configurations.mjs`: waypoints de Bico de Pato espaçados para remover sobreposição próxima à Laranjinha (mudança já existente ao iniciar esta continuação da tarefa).
+- `track-configurations.test.mjs`: regressão da spline Catmull-Rom exige clearance de 22,8 m entre trechos não locais no mesmo nível.
+- `game.js`: câmera piloto acima/à frente do capô; nomes claros para cockpit e mapa aéreo. Direção/física mantidas após teste real confirmar yaw e deslocamento corretos.
+- `styles.css`: zonas de status do rodapé adaptadas para não colidirem em 390×844 e 320×844.
+- `checklist.txt`: plano executado, validações e relatório final.
+- `artifacts/game-progress.md` e `artifacts/final-evidence.md`: causa, correções, limites, capturas e testes.
+- `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`: solicitação, decisões, resultados e estado da revisão independente.
+
+Como validar/verificar:
+1. Executar `node --check game.js`.
+2. Executar `node --test track-configurations.test.mjs` (7/7 passam).
+3. Executar a suíte listada em `artifacts/final-evidence.md`; resultado atual 96/97, com falha preexistente `race-ai.test.mjs:426`.
+4. Servir o projeto por HTTP, iniciar Interlagos; C percorre traseira, visão do piloto, traseira longe e mapa aéreo. Conferir rótulos e pista/horizonte.
+5. Em corrida ativa, manter W+A e W+D com velocidade; F2 mostra steer, velocidade e estado. A/D devem alterar yaw e deslocamento em sentidos opostos.
+6. Conferir capturas e viewport measurements em `artifacts/final-evidence.md`; imagens ficam em `%TEMP%\lunaracer-fix-20260925-*`.
+7. Revisão independente read-only por `final_review`: sem bloqueador visual; a automação de browser não foi criada, e a sessão manual com Chrome/CDP está registrada como evidência.
+
+====================================================================
+TAREFA: Refinar desenhos do ambiente a partir de docs/opus5.html
+DATA: 2026-09-25
+SOLICITANTE: Cleber
+====================================================================
+
+=== SEÇÃO: PLANO ===
+
+Etapas:
+[x] 1. Retomar adaptação anterior e os seis prints; preservar alterações em andamento.
+[x] 2. Ler apenas skills locais de direção, gameplay, gráficos, UI, debug, QA e modelagem 3D, com referências relevantes.
+[x] 3. Comparar geometria do Opus com LunaRacer: o anexo usa exclusão global da pista para vegetação e relevo distante; a cena atual ainda usa cones/bolas simples e orienta picos pela normal local do traçado.
+[x] 4. Evitar que terreno, árvores, montanhas e lago ambientais ocupem qualquer trecho dirigível; UV global eliminou o redemoinho aéreo.
+[x] 5. Refinar silhuetas instanciadas de árvores e restaurar a luz solar já configurada, sem dependências ou regras novas.
+[x] 6. Liberar o carro da sobreposição do minimapa mobile; validar 320/390/1440 px, cinco pistas, sintaxe, suite e renderer.
+[x] 7. Registrar revisão independente, evidências, memória e relatório final.
+
+Arquivos que serão alterados:
+- `game.js`: afastar montanhas/lago pelo contorno total da pista, mascarar terreno sobre qualquer faixa, mapear textura do solo em coordenadas globais, filtrar árvores próximas a qualquer faixa, melhorar geometria de copas instanciadas e restaurar `scene.add(sunlight)`.
+- `styles.css`: mover somente o minimapa da corrida em orientação retrato para não encobrir o carro; preservar HUD/menu existentes nos demais estados.
+- `checklist.txt`: plano, execução e relatório desta retomada.
+- `artifacts/game-progress.md`, `artifacts/final-evidence.md`: decisões, capturas e medições.
+- `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`: memória factual desta retomada.
+
+Arquivos que serão criados:
+- NENHUM. Capturas temporárias fora do projeto, identificadas no relatório.
+
+Arquivos que serão removidos:
+- NENHUM.
+
+Riscos/impactos:
+- Culling de terreno por quads criou faixas vazias na primeira captura desta rodada; manter a malha contínua e usar máscara procedural projetada em XZ apenas sob asfalto/acostamento. Verificar alinhamento da máscara e custo gráfico.
+- Exclusão de vegetação pode reduzir densidade em regiões de múltiplas curvas; usar lookup espacial da curva existente e conferir visuais/perfis.
+- Novas copas podem elevar triângulos; preservar instancing e medir os três perfis.
+- A luz solar reativada acrescenta custo de sombras e muda exposição; medir perfis e legibilidade da pista/carro.
+- Minimap mobile movido para cima pode cobrir o banner/curva; verificar posição em 320 e 390 px e manter os outros estados inalterados.
+- Não alterar geometria dirigível, física, 16 carros, cinco pistas, HUD navy/cyan, câmeras, controles ou dependências.
+- O HTML Opus é referência de técnicas/desenho, não especificação de trem, moedas, arena ou regras.
+
+Critérios de aceitação:
+- Asfalto, zebras e barreiras não são cobertos por meshes ambientais nas capturas de Interlagos.
+- Árvores próximas respeitam a pista inteira e têm silhuetas menos primitivas em jogo ativo.
+- O minimapa mobile em corrida não cobre o veículo nem bloqueia a faixa próxima.
+- Montanhas compõem apenas o fundo em todas as cinco pistas.
+- `node --check game.js` e testes de pista passam; navegador renderiza jogo ativo sem erros funcionais, desktop/mobile sem overflow.
+- Relatório distingue melhoria verificada de qualidade AAA não comprovada.
+
+Perguntas pendentes:
+- NENHUMA; estilo estabelecido no projeto e referência explícita do anexo.
+
+=== SEÇÃO: EXECUÇÃO ===
+
+[x] Plano registrado antes de editar código nesta retomada.
+[x] Primeira captura real apontou regressão: recorte por quads deixou céu visível entre os trechos. Malha contínua restaurada, máscara procedural projetada em XZ aplicada; plano-base evita vazios do terreno existente.
+[x] Captura aérea revelou lago retangular sobre trecho superior; reposicionamento pelo contorno global em andamento.
+[x] Revisão independente read-only: pista livre de vegetação; apontou redemoinho no terreno radial e lago retangular. Testar UV global antes de alterar a malha.
+[x] Revisão final confirmou redemoinho removido; identificou quebra de `15 / 16` no HUD 320 px. Ajuste pontual concluído e inspecionado.
+[x] Máscara XZ, lookup espacial, copas em camadas, cenário externo, UV XZ, sol e HUD mobile implementados sem alterar corrida/física/carro.
+[x] Jogo ativo em Interlagos, Costa Azul, Serra Alta, Vale Seco e Porto Ciano: sem exceções JS ou perda de contexto; capturas desktop/aérea/mobile registradas.
+[x] W+D real por 1,2 s: steer +1, yaw Δ -1,014 rad e velocidade 13,21 m/s. `node --check game.js` e `git diff --check` passaram.
+[x] Suite 96/97; falha única preexistente `race-ai.test.mjs:426` inalterada. Renderer: baixo 433 calls/492.444 tris, médio 427/573.720, alto 427/708.740; mobile 303 calls.
+[x] Revisão read-only `visual_audit` confirmou pista livre; redemoinho e quebra de posição 320 px corrigidos e reinspecionados. O lago distante não teve captura próxima.
+[x] `artifacts/game-progress.md`, `artifacts/final-evidence.md` e memória atualizados.
+
+=== SEÇÃO: RELATÓRIO FINAL ===
+
+Arquivos criados:
+- NENHUM no projeto. Capturas de QA em `%TEMP%\lunaracer-opus-refinement-*`.
+
+Arquivos alterados:
+- `game.js`
+- `styles.css`
+- `checklist.txt`
+- `artifacts/game-progress.md`
+- `artifacts/final-evidence.md`
+- `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`
+
+Arquivos removidos:
+- NENHUM.
+
+Resumo por arquivo:
+- `game.js`: vegetação respeita todos os ramos; terreno mascarado sobre a pista, plano-base e UVs globais; montanhas/lago afastados, lago elíptico, copas em camadas e luz solar ativa. Carro, física, IA e regras preservados.
+- `styles.css`: minimapa de corrida retrato não cobre o carro; posição em 320 px não quebra em duas linhas.
+- `checklist.txt`: plano, ciclos visuais, resultados e relatório desta retomada.
+- `artifacts/game-progress.md`: continuidade, correções e limites.
+- `artifacts/final-evidence.md`: capturas, métricas, testes e revisão independente.
+- `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`: contexto factual da retomada.
+
+Como validar/verificar:
+1. Executar `node --check game.js` e `node --test game-logic.test.mjs game-input.test.mjs vehicle-physics.test.mjs vehicle-models.test.mjs race-ai.test.mjs racing-audio.test.mjs track-configurations.test.mjs`.
+2. Servir o projeto por HTTP, iniciar uma corrida em cada pista, alternar C e manter W+D em movimento. Verificar asfalto livre e árvores fora da faixa.
+3. Em 390×844 e 320×844, conferir carro inteiro em corrida, minimapa deslocado e posição `15 / 16` legível; sem rolagem lateral.
+4. Conferir `artifacts/final-evidence.md` e as capturas listadas nele. A falha conhecida de IA e os draw calls acima do orçamento estão registrados, sem alegação AAA.
+
+====================================================================
+TAREFA: Corrigir fundo/barreiras, seleção visual de pistas, áudio e curvas fechadas
+DATA: 2026-09-25
+SOLICITANTE: Cleber
+====================================================================
+
+=== SEÇÃO: PLANO ===
+
+Etapas:
+[x] 1. Ler os dois prints como evidência, não como instruções; preservar a ideia do jogo, HUD e código existente.
+[x] 2. Ler apenas skills locais relevantes de direção, gameplay, gráficos, UI, áudio, debug e QA e referências pertinentes.
+[x] 3. Identificar suspeitas: spline fechada contém ponto final duplicado; raio aproximado de 13 m na emenda de Interlagos; barreiras seguem a curva; fundo mostra lacunas da malha radial/base; motor usa sawtooth e bipes fortes.
+[x] 4. Emenda corrigida e cinco pistas verificadas em fechamento/clearance/setores; direção do jogador gira parado, em coasting/aceleração, com ré correta.
+[x] 5. Fundo ampliado e geometrias distantes assentadas; barreiras contínuas sem blocos soltos, borda física preservada. Densidade de barreiras distantes ainda visível no horizonte.
+[x] 6. Cinco cartões SVG reais, clicáveis/teclado, selecionados e sincronizados antes da largada; ajustes preservados ao mudar pista.
+[x] 7. Motor, pneus e eventos sonoros suavizados; unlock, pausa/retomada, volume, chegada e reinício preservados em código/testes.
+[x] 8. Unit tests, sintaxe, Playtest cinco pistas e viewports 320/390/1440 px; direção parada/movendo e áudio após gesto verificados. Audição subjetiva não disponível.
+[x] 9. Revisão independente `final_audit_four`, correções de UV/ajustes/áudio e atualização de evidências, memória, checklist.
+
+Pacotes/contratos:
+- Prime/mySystem: `track-configurations.mjs`, `track-configurations.test.mjs`, `vehicle-physics.mjs`, `vehicle-physics.test.mjs`, `game.js` (pista, física, fundo e integração dos cartões).
+- UI (agente independente): `index.html`, `styles.css`; criar `#track-picker` dentro do menu pronto com contêiner para cartões gerados por `game.js`; manter select existente como fallback e não editar `game.js`.
+- Áudio (agente independente): `racing-audio.mjs`, `racing-audio.test.mjs`; não editar outros arquivos.
+- Revisão técnica/visual independente após integração, sem edição simultânea dos arquivos acima.
+
+Arquivos que serão alterados:
+- `track-configurations.mjs` e `track-configurations.test.mjs`: retirar fechamento duplicado da spline e provar geometria/curvatura sem artefatos.
+- `vehicle-physics.mjs` e `vehicle-physics.test.mjs`: melhorar resposta de direção em baixa velocidade e curva fechada com aceleração/coasting.
+- `game.js`: reparar fundo/barreiras se necessário e gerar/ligar desenhos SVG reais ao seletor da tela inicial.
+- `index.html` e `styles.css`: cartão visual acessível por pista, clicável, selecionado e responsivo.
+- `racing-audio.mjs` e `racing-audio.test.mjs`: timbre/volume/transientes suaves e regressão de pausa/volume.
+- `checklist.txt`, `artifacts/game-progress.md`, `artifacts/final-evidence.md`, `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`: acompanhamento, capturas e relatório.
+
+Arquivos que serão criados:
+- NENHUM. Usar SVG em código a partir da geometria real; não gerar pacote, mídia externa ou arquivo novo.
+
+Arquivos que serão removidos:
+- NENHUM.
+
+Riscos/impactos:
+- Remover nó duplicado altera escala/progresso setorial e formato; testar cinco pistas, ordem de checkpoints e clearance.
+- Esterçar parado é resposta arcade, não simulação realista; preservar sentido de marcha à ré e limite em alta velocidade.
+- Fundo contínuo não deve atravessar asfalto nem esconder barreiras; medir draw calls/triângulos e conferir captura após curvas.
+- Menu grande precisa manter CTA e mapa legíveis/focáveis em desktop e celular; recarga ao escolher pista só antes da largada.
+- Áudio puramente procedural pode melhorar suavidade, mas não equivaler a amostras reais; sem nova dependência ou asset.
+- Falha preexistente `race-ai.test.mjs:426` ainda fora de escopo, a menos que a nova emenda revele relação direta.
+
+Critérios de aceitação:
+- Sem fundo azul/recortes abruptos ou barreiras atravessando a faixa nas posições do print 1.
+- Cinco cartões mostram desenhos distintos e selecionáveis antes de correr; clique carrega pista correta, foco/teclado funcionam e iniciar usa a escolha.
+- Som contínuo e eventos não agressivos; volume 0–100%, pausa/retomada e cleanup preservados.
+- Direção A/D altera yaw mesmo sem aceleração quando parado e mantém controle em curva fechada acelerando ou desacelerando; sem inversão em ré.
+- Browser sem exceções, cinco pistas e viewports verificados; testes reportados com falhas honestas.
+
+Perguntas pendentes:
+- NENHUMA; as capturas e requisitos definem os quatro defeitos.
+
+=== SEÇÃO: EXECUÇÃO ===
+
+[x] Plano/arquivos/contratos registrados antes de novas edições de código.
+[x] `track-configurations.mjs`: nó de fechamento duplicado removido; raio da emenda de Interlagos ~13 m -> ~29 m, cinco pistas sem regressão de fechamento/clearance/setores; teste de emenda novo.
+[x] `game.js`: barreiras de blocos separados trocadas por uma malha contínua segmentada em vermelho/branco. Plano-base ampliado; montanhas e lago assentados no mesmo nível do fundo.
+[x] `vehicle-physics.mjs`: jogador pode esterçar parado/coasting e tem maior autoridade em curva; ré preserva sentido inverso; IA mantém parâmetros anteriores. Teste novo em `vehicle-physics.test.mjs`.
+[x] `index.html`/`styles.css`/`game.js`: cartões SVG das cinco centerlines reais no menu, seleção por clique/teclado e recarga antes da largada; select em Ajustes preservado. UI desktop/390/320 validada; CTA visível, sem overflow.
+[x] `racing-audio.mjs`: ondas suaves, ganhos/transientes reduzidos; API, volume e pausa preservados. Teste de áudio 7/7. Avaliação auditiva humana não disponível nesta sessão.
+[x] Navegador: clique em Porto Ciano carregou a pista e destacou seu cartão; cinco pistas chegaram a `racing`, zero exceções JS/contexto perdido. Em Porto Ciano A girou yaw parado com velocidade 0, W+D virou em movimento. Interlagos traseira longe capturada com fundo e barreira contínuos.
+[x] Corrida real por clique: áudio desbloqueou sem log de erro, passou por countdown -> racing; slider 70% -> 30%, pausa e retomada mantiveram valor.
+[x] Suite completa: 99/100; única falha segue `race-ai.test.mjs:426`, preexistente. `node --check game.js`, `git diff --check` passaram.
+[x] Revisão independente read-only concluiu sem bloqueador novo; faixa distante de barreiras permanece limitação visual conhecida.
+[x] Revisão read-only `final_audit_four` encontrou três regressões funcionais: áudio pós-reinício/chegada, UV da emenda da pista e perda dos ajustes ao trocar pista. Correção mínima adicionada ao plano antes de editar.
+[x] UV do ribbon fechado corrigido com vértice final; difficulty/graphics/effects preservados na URL e conferidos no browser; chegada/reinício de áudio ajustados e rechecados por reviewer.
+[x] Faixa de barreiras distante permanece visualmente densa na câmera longe; registrada como limitação estética sem alterar a borda física.
+[x] `artifacts/game-progress.md`, `artifacts/final-evidence.md` e memória operacional atualizados.
+
+=== SEÇÃO: RELATÓRIO FINAL ===
+
+Arquivos criados:
+- NENHUM no projeto. Capturas de QA em `%TEMP%\lunaracer-four-fixes-*`.
+
+Arquivos alterados:
+- `track-configurations.mjs`, `track-configurations.test.mjs`
+- `vehicle-physics.mjs`, `vehicle-physics.test.mjs`
+- `game.js`, `index.html`, `styles.css`
+- `racing-audio.mjs`, `racing-audio.test.mjs`
+- `checklist.txt`, `artifacts/game-progress.md`, `artifacts/final-evidence.md`, `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`
+
+Arquivos removidos:
+- NENHUM.
+
+Resumo por arquivo:
+- `track-configurations.mjs`/teste: fecha spline sem waypoint repetido e testa raio da emenda.
+- `vehicle-physics.mjs`/teste: direção arcade opcional em baixa velocidade, coasting/curva e ré sem inversão.
+- `game.js`: barreira contínua e fundo assentado, UV de fechamento; cartões SVG derivados dos traçados, seleção preservando ajustes; áudio de chegada/reinício e física do jogador integrados.
+- `index.html`/`styles.css`: menu com cinco cartões selecionáveis e responsivos, preservando CTA e select em Ajustes.
+- `racing-audio.mjs`/teste: síntese menos áspera e transientes suaves, com 7/7 testes de API/pausa/volume.
+- Checklist/evidências/memória: decisões, capturas, falha AI preexistente e limites documentados.
+
+Como validar/verificar:
+1. Executar `node --test game-logic.test.mjs game-input.test.mjs vehicle-physics.test.mjs vehicle-models.test.mjs race-ai.test.mjs racing-audio.test.mjs track-configurations.test.mjs` (99/100; falha preexistente AI linha 426).
+2. Servir via HTTP, escolher uma das cinco pistas clicando no desenho, iniciar corrida. Confirmar cartão selecionado, dificuldade/gráficos/volume preservados.
+3. Em Interlagos, usar câmera C até traseira longe; observar fundo e barreira contínua. Com W+A/W+D e apenas A/D parado, conferir curva e yaw; R reposiciona.
+4. Ouvir motor/eventos em volume confortável, pausar/retomar e correr novamente após resultado; confirmar a percepção auditiva em alto-falantes/fones reais.
+5. Abrir `artifacts/final-evidence.md` para capturas desktop/390/320, métricas e limites.
+
+====================================================================
+TAREFA: Cockpit interno, rivais competitivos, Extra Alto e Realista
+DATA: 2026-09-25
+SOLICITANTE: Cleber
+====================================================================
+
+=== SEÇÃO: PLANO ===
+
+Etapas:
+[x] 1. Ler estado atual, skills locais de diretor/gameplay/gráficos/UI/debug/QA/modelagem e histórico; preservar mudanças anteriores.
+[x] 2. Definir contratos de arquivos e integração: vista interna nova sem remover as quatro câmeras, IA com tráfego real e cinco perfis de gráficos.
+[x] 3. Cockpit procedural como quinta câmera, painel/para-brisa/volante/mãos sincronizados; cinco rodadas de refinamento sobre a referência. Fidelidade fotográfica não atingida.
+[x] 4. Tráfego/lane física e IA ajustados; 15 rivais progrediram em jogo ativo, dificuldade medida e regressão anterior de ultrapassagem resolvida.
+[x] 5. Extra Alto/Realista com alvo confirmado 2x/4x pixels de Alto, vegetação/sombra maiores e limite de renderbuffer respeitado; sem alegar qualidade subjetiva dupla.
+[x] 6. Testes 102/102, CDP real desktop/mobile, cinco câmeras, A/D, retrato mobile, dificuldade e perfis; métricas no relatório. Sem FPS em GPU física.
+[x] 7. Cinco rodadas Smith/Neo concluídas; Smith recusou AAA com defeitos concretos. Evidências/relatório/memória atualizados.
+
+Pacotes/contratos:
+- mySystem: `game.js`, `index.html`, `styles.css` (integração da vista e render settings), checklist e relatórios. É o único editor de `game.js`.
+- Especialista veículo: `vehicle-models.mjs`, `vehicle-models.test.mjs` apenas. Exportar cockpit procedural compatível com `createSportsCar` e um pivô `steeringWheel` com mãos como filhos; informar posição local do olho e objetos que precisam ocultação para câmera interna.
+- Especialista IA: `race-ai.mjs`, `race-ai.test.mjs` apenas. Investigar decisão de faixa/tráfego, superar falha conhecida de teste e comportamento parado; comunicar ajustes necessários ao caller `game.js` sem editá-lo.
+- Revisor independente read-only após integrar e capturar.
+
+Arquivos que serão alterados:
+- `game.js`: quinta câmera de interior, sincronização física/volante, observação/colisão/IA integrada e perfis Extra Alto/Realista.
+- `vehicle-models.mjs`, `vehicle-models.test.mjs`: interior e geometria/contrato de pivôs testados.
+- `race-ai.mjs`, `race-ai.test.mjs`: tráfego, ultrapassagem, saída de agrupamento e regressões testadas.
+- `index.html`, `styles.css`: duas opções gráficas adicionais e preservação do painel responsivo.
+- `checklist.txt`, `artifacts/game-progress.md`, `artifacts/final-evidence.md`, `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`: continuidade, evidências e relatório.
+
+Arquivos que serão criados:
+- NENHUM; interior construído por geometria procedural no módulo existente, sem dependências novas.
+
+Arquivos que serão removidos:
+- NENHUM.
+
+Riscos/impactos:
+- Câmera dentro da carroceria pode ser obstruída por roof/glass; ocultação deve afetar só a câmera interna, não rivais nem colisões.
+- Mãos e volante seguem o mesmo sinal de steer; preservar respostas da física e a visibilidade da pista.
+- Maior densidade/pixels pode exceder orçamento e congelar software/mobile; manter perfis antigos, medir custo real e limitar pelo tamanho máximo do render target quando necessário.
+- IA 15 carros já sofre congestionamento; teste integrado de progresso/ranking e colisões antes de alegar ultrapassagem; nenhuma teletransportação.
+- Falha anterior `race-ai.test.mjs:426` não pode ser declarada resolvida sem teste passando.
+
+Critérios de aceitação:
+- C percorre cinco vistas; nova vista interna mostra painel, para-brisa, volante e duas mãos sem o modelo externo obstruindo estrada. A/D viram volante e mãos nos dois sentidos em jogo ativo.
+- Fácil/Médio/Difícil apresentam diferenças mensuráveis; rivais iniciam, aceleram, fazem curvas, disputam faixas e ao menos alguns ultrapassam naturalmente sem ficar empilhados.
+- Baixo/Médio/Alto permanecem; Extra Alto usa alvo de 2x pixels de Alto, Realista 4x pixels de Alto e vegetação/sombra progressiva, com métricas visíveis e fallback de hardware honesto.
+- Tela pronta, pausa/retomada, câmeras antigas, cinco pistas e modo mobile sem regressão; testes e erros reportados fielmente.
+
+Perguntas pendentes:
+- NENHUMA; “dobro do processamento” interpretado como área renderizada alvo (pixels), não garantia matemática de qualidade visual percebida.
+
+=== SEÇÃO: EXECUÇÃO ===
+
+[x] Plano registrado antes da edição de código nesta tarefa.
+[x] `vehicle-models.mjs`/teste: interior procedural em `car.root`, painel, volante, mãos/antebraços e occluders; 9/9 testes. Captura inicial mostrou volante/moldura grandes; reenquadrado; referência fotográfica adicional exige acabamento de materiais/instrumentos/luvas/retrovisor, em execução pelo especialista.
+[x] `game.js`: quinta câmera `INTERIOR DO CARRO` adicionada ao ciclo C; olho em `eyeOffset`, occluders ocultados só nessa vista; mãos/volante giram ±0,55 rad com A/D, duas mãos confirmadas por telemetria. Capturas antes/depois do reenquadramento feitas em jogo ativo.
+[x] `race-ai.mjs`/teste: faixas de 3 m e tráfego próximo separado do líder distante; falha anterior `race-ai.test.mjs:426` superada; 31/31 testes do módulo. Caller `game.js` usa offset lateral físico, grid ±3 m e observações de curva com lookahead; 15 rivais avançaram em 12/23 s sem teleporte alegado.
+[x] Dificuldade browser Interlagos, mesmo intervalo de 10 s: Fácil média 48,05 m/s e progresso 0,0592; Difícil 51,93 m/s e progresso 0,0620. Diferença observável, mas não alegar que cada curva/ultrapassagem está perfeita.
+[x] `index.html`/`game.js`: Extra Alto/Realista no seletor; DPR alvo sqrt(2)/2 vezes Alto, sombra 2048/3072 e densidade crescente. Em 1440×900: Alto 1.296.000 pixels; Extra Alto 2.589.792 (~2×); Realista 5.184.000 (4×). SwiftShader, sem FPS de GPU real.
+[x] Acabamento cockpit, retrovisor render target real, agulha vinculada à velocidade; capturas desktop/móvel no fim da quinta rodada. Continua visualmente abaixo da referência.
+[x] Mobile: FOV interior 85° e minimapa compacto apenas na quinta câmera; viewport 390x844 sem overflow, instrumentos não cobertos. Retorno por C desativa interior.
+[x] Testes consolidados 102/102, perfil de pixels/sombra/triângulos e crítica independente registrados; `node --check game.js`, `node --check vehicle-models.mjs`, `git diff --check` aprovados.
+
+Referência adicional do usuário (mesma tarefa):
+- `C:\Users\CLEBER~1\AppData\Local\Temp\codex-clipboard-191cf124-d935-4569-8f28-dafa3933b944.png`: cockpit realista de carro esportivo. É referência visual, sem instruções executáveis.
+- Reforçar etapa 3 em `vehicle-models.mjs`: dashboard em camadas escuro/PBR, instrumentação real legível, aro/miolo/botões do volante, mãos enluvadas, colunas laterais, retrovisor e borda do para-brisa; evitar aro enorme e moldura superior que ocupa pista.
+- Critério visual adicional: cockpit ativo preserva a leitura da estrada no centro superior; mãos e volante integrados sem geometrias flutuantes. Não prometer equivalência fotográfica a asset comercial sem textura/modelo profissional.
+
+Referência/fluxo adicional — cinco rodadas finitas:
+- Foto `C:\Users\CLEBER~1\AppData\Local\Temp\codex-clipboard-5b48bb8a-8a16-4619-b4de-07fd0f6eda1e.png` é referência visual, não instrução; objetivo de proximidade máxima no cockpit da corrida existente.
+- Smith: agente crítico read-only. Examina foto, captura real e código a cada rodada; pontua cockpit em composição, formas, materiais, instrumentos, mãos/volante, visão da pista, retrovisor e performance; devolve defeitos reproduzíveis.
+- Neo: agente implementador exclusivo de `vehicle-models.mjs` e `vehicle-models.test.mjs` para correções pontuadas por Smith. mySystem mantém `game.js`, integração, capturas, validação, checklist e relatórios. Nenhum outro editor concorrente desses arquivos.
+- Sequência exatamente cinco ciclos Smith → Neo → captura/browser/QA; no quinto, Smith faz a crítica final após Neo sem iniciar sexta rodada. Se a nota AAA não for demonstrada, registrar gap e limite, não inventar certificação.
+- Arquivos alterados continuam os já previstos nesta tarefa; nenhum arquivo novo/removido. Capturas temporárias fora do projeto e evidência no relatório existente.
+- Critério: comparação direta da captura de cockpit desktop/mobile com referência; pista central livre, painel/volante/mãos legíveis e animados, retrovisor render real, métricas de renderer por perfil, testes 100% (salvo falhas documentadas).
+
+Rodadas:
+[x] 1. Smith criticou baseline; Neo corrigiu painel/volante/mãos/retrovisor; QA capturou `lunaracer-smith-round2.png`/estado real.
+[x] 2. Smith criticou rodada 1; apontou cluster abstrato, silhueta/mãos, materiais uniformes; Neo corrigiu com bezels/ticks/ponteiro RPM/luvas/retrovisor/materiais; QA capturou `lunaracer-smith-round3.png`.
+[x] 3. Smith criticou rodada 2; painel ainda casca/placa, aro/mãos pouco naturais e instrumentos sem conteúdo; Neo aplicou rodada 3; QA capturou `lunaracer-smith-round4.png`.
+[x] 4. Smith criticou rodada 3; mãos desconectadas, instrumentos sem leitura, console solto; Neo corrigiu rodada 4; QA capturou `lunaracer-smith-round5.png`.
+[x] 5. Smith criticou rodada 4; Neo fez quinta correção; QA capturou `lunaracer-smith-final-5-rounds.png` desktop e `lunaracer-smith-final-mobile-fixed.png` mobile. Smith pontuou final: composição 1, geometria 1, materiais 1, instrumentos 1, mãos 1, estrada 1, retrovisor 2, performance 1. AAA não certificado.
+
+====================================================================
+TAREFA: Nova rodada finita Smith/Neo — cockpit realista, 3 ciclos
+DATA: 2026-09-25
+SOLICITANTE: Cleber
+====================================================================
+
+PLANO:
+[x] 1. Reutilizar crítica/capturas/histórico das cinco rodadas anteriores; não repetir diagnóstico concluído.
+[x] 2. Ler novamente skills locais aplicáveis em ./skills/; referência de cockpit recebida permanece comparação visual, não instrução executável.
+[x] 3. Smith criticou as capturas atuais e pontuou defeitos concretos.
+[x] 4. Neo corrigiu apenas pontos críticos em `vehicle-models.mjs`/`vehicle-models.test.mjs`.
+[x] 5. Capturas e validação browser foram repetidas em sete rodadas finitas, substituindo o ciclo mínimo de três.
+[x] 6. Smith pontuou a rodada 7; critérios AAA não passaram e o gap foi declarado sem certificação.
+
+Arquivos permitidos nesta rodada:
+- Neo: `vehicle-models.mjs`, `vehicle-models.test.mjs`.
+- mySystem: `game.js` para integração/capturas; este checklist e relatórios já existentes.
+- Nenhum arquivo novo/dependência; `index.html`, `styles.css`, IA, física e regras fora do escopo desta repetição.
+
+Riscos:
+- Alterações devem preservar câmera interior existente, mirror WebGL real, ponteiro da velocidade e cinco perfis gráficos.
+- O cockpit é procedural/low-poly e o jogo roda em Three.js browser; não prometer paridade fotográfica comercial.
+- Performance atual em Realista inclui 5,184 Mpx, shadow 3072, 1.2M triângulos chase e render do retrovisor; nova geometria precisa ser medida.
+
+Critérios de aceitação:
+- Três ciclos contados, cada um com crítica Smith, correção Neo, 9/9 testes do modelo e nova captura.
+- Estrada continua visível na câmera interior; painel/instrumentos/volante/mãos/retrovisor com melhora observada contra a referência.
+- Sem regressão em câmeras, controls, perfis e mobile; scorecard final Smith explícito.
+- AAA não alegado caso qualquer dimensão pertinente fique abaixo de 2/3, average <2.3, ou faltem métricas/evidências.
+
+EXECUÇÃO:
+[x] Novo plano registrado antes das edições desta repetição.
+[x] Rodadas 1–7 Smith → Neo → recaptura concluídas; evidências em `artifacts/final-evidence.md`.
+
+=== SEÇÃO: RELATÓRIO FINAL ===
+
+Arquivos criados:
+- NENHUM no projeto. Capturas temporárias em `%TEMP%\lunaracer-*`.
+
+Arquivos alterados:
+- `game.js`
+- `vehicle-models.mjs`, `vehicle-models.test.mjs`
+- `race-ai.mjs`, `race-ai.test.mjs`
+- `index.html`, `styles.css`
+- `checklist.txt`, `artifacts/game-progress.md`, `artifacts/final-evidence.md`, `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`
+
+Arquivos removidos:
+- NENHUM.
+
+Resumo por arquivo:
+- `game.js`: quinta câmera interna, animação de volante/mãos, agulha por velocidade, retrovisor com câmera real; tráfego pela posição física e velocidade-alvo por curva; cinco perfis gráficos com multiplicadores de pixels e diagnóstico.
+- `vehicle-models.mjs`/teste: cockpit procedural, luvas/volante/instrumentos/para-brisa/retrovisor e contrato testado; cinco correções criticadas independentemente.
+- `race-ai.mjs`/teste: faixa de 3 m, ocupação próxima, escolha de ultrapassagem e habilidade refletida em velocidade; regressão de ultrapassagem corrigida.
+- `index.html`/`styles.css`: opções Extra Alto e Realista, minimapa compacto na câmera interna mobile.
+- Checklist, progresso, evidências e memória: plano, ciclos, medições, testes e limites.
+
+Como validar/verificar:
+1. Servir por HTTP, iniciar Interlagos e pressionar C quatro vezes até `INTERIOR DO CARRO`; A/D giram mãos e volante nos dois sentidos; C volta à traseira.
+2. Ajustes > Gráficos: Alto, Extra Alto, Realista; conferir visual e custo. Alvos 1x/2x/4x pixels de Alto, sujeitos ao limite do dispositivo.
+3. Corrida ativa Fácil/Difícil: observar progressão/ranking dos 15 rivais; testes de IA `node --test race-ai.test.mjs`.
+4. Suite completa `node --test game-logic.test.mjs game-input.test.mjs vehicle-physics.test.mjs vehicle-models.test.mjs race-ai.test.mjs racing-audio.test.mjs track-configurations.test.mjs`: 102/102.
+5. `artifacts/final-evidence.md` guarda capturas e métricas. Após exatamente cinco ciclos, Smith não certificou AAA; geometria/material/instrumentação/mãos/ambiente ainda distantes da foto.
+
+====================================================================
+ATUALIZAÇÃO FINAL — MICROLOOP DO COCKPIT (7 RODADAS)
+====================================================================
+
+EXECUÇÃO:
+[x] Smith/Microauditores mapearam M01–M20 por peça, sem editar código.
+[x] Neo executou 7 correções incrementais em `vehicle-models.mjs`/`vehicle-models.test.mjs`.
+[x] mySystem integrou M19 em `game.js`: volante, mãos esquerda/direita, agulha RPM e display canvas acompanham o estado real.
+[x] mySystem corrigiu M20 em `styles.css`: minimapa reduzido na câmera interna sem cobrir o display.
+[x] Capturas reais desktop/mobile e teste W+D concluídos; sem page errors ou context loss.
+[x] Smith encerrou o loop: avanço comprovado, AAA não certificado.
+
+RELATÓRIO FINAL:
+- Arquivos criados: NENHUM.
+- Arquivos alterados: `game.js`, `styles.css`, `vehicle-models.mjs`, `vehicle-models.test.mjs`, `checklist.txt`, `artifacts/game-progress.md`, `artifacts/final-evidence.md`, `docs/memoria-01a0d78b-94b5-7382-b3b3-3e2c0c63523b.md`.
+- Arquivos removidos: NENHUM.
+- Capturas finais: `%TEMP%\lunaracer-micro-round7-20260925.png`, `%TEMP%\lunaracer-micro-final-mobile-20260925.png`, `%TEMP%\lunaracer-micro-final-steer-right-20260925.png`.
+- Score Smith final (0–3): direção 1, cockpit 1, barreiras 1, interações 0 (não evidenciado no frame), mundo 1, materiais 1, iluminação 1, movimento 0 (não evidenciado no frame), UI 1, performance 0 (métricas do scorecard não capturadas nesta rodada). AAA não certificado.
+
+VALIDAÇÃO:
+1. `node --test` → 146/146.
+2. `node --test vehicle-models.test.mjs` → 10/10.
+3. `node --check game.js` e `node --check vehicle-models.mjs` → OK.
+4. Browser 1440×900 e 390×844 → estado `racing`, câmera 4, sem erros JS, sem overflow mobile.
+5. W+D → `steer: 1`, `steeringAngle: -0.55`, `leftHandAngle: 0.16`, `rightHandAngle: -0.16`, `rpmNeedleAngle: 0.0688`.
+
+LIMITES:
+- Cockpit, mundo e barreiras permanecem procedurais/low-poly; a referência comercial fotorrealista não foi igualada.
+- Scorecard AAA exige todas as categorias ≥2, média ≥2,3 e métricas de render; a evidência final não atende esses critérios.
+
 ====================================================================

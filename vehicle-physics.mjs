@@ -3,6 +3,7 @@ export const DEFAULT_VEHICLE_CONFIG = Object.freeze({
   maxSpeedMps: 98,
   maxReverseMps: 11,
   maxSteeringAngle: 0.42,
+  minimumSteeringSpeedMps: 0,
   maxLateralAccelerationMps2: 40,
   accelerationMps2: 11,
   brakingMps2: 26,
@@ -41,7 +42,7 @@ export function stepVehicle(state, input, deltaSeconds, config = {}) {
 
   const settings = { ...DEFAULT_VEHICLE_CONFIG, ...config };
   const positive = ["wheelbase", "maxSpeedMps", "maxReverseMps", "wheelRadius", "maxLateralAccelerationMps2"];
-  const nonNegative = ["maxSteeringAngle", "accelerationMps2", "brakingMps2", "reverseAccelerationMps2", "rollingResistance", "aerodynamicDrag", "lateralAcceleration", "lateralGrip"];
+  const nonNegative = ["maxSteeringAngle", "minimumSteeringSpeedMps", "accelerationMps2", "brakingMps2", "reverseAccelerationMps2", "rollingResistance", "aerodynamicDrag", "lateralAcceleration", "lateralGrip"];
   if (settings.surfaceHeight !== undefined && typeof settings.surfaceHeight !== "function") {
     throw new TypeError("A altura da superfície precisa ser uma função.");
   }
@@ -98,7 +99,8 @@ function stepFixed(state, input, deltaSeconds, settings) {
   speedMps /= 1 + settings.aerodynamicDrag * Math.abs(speedMps) * deltaSeconds;
   speedMps = clamp(speedMps, -settings.maxReverseMps, settings.maxSpeedMps);
 
-  const requestedYawRate = -speedMps / settings.wheelbase * Math.tan(steer * settings.maxSteeringAngle);
+  const steeringSpeed = Math.sign(speedMps || 1) * Math.max(Math.abs(speedMps), settings.minimumSteeringSpeedMps);
+  const requestedYawRate = -steeringSpeed / settings.wheelbase * Math.tan(steer * settings.maxSteeringAngle);
   const maxYawRate = settings.maxLateralAccelerationMps2 / Math.max(Math.abs(speedMps), 1);
   const yawRate = clamp(requestedYawRate, -maxYawRate, maxYawRate);
   const yawMid = wrapAngle(state.yaw + yawRate * deltaSeconds * 0.5);

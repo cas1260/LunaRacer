@@ -91,7 +91,7 @@ if (THREE.error) {
   const source = await readFile(new URL("./vehicle-models.mjs", import.meta.url), "utf8");
   test("contrato estrutural permanece verificável sem CDN", () => {
     assert.equal(typeof createSportsCar, "function");
-    assert.match(source, /return \{ root, bodyGroup, wheels, steeringWheels, collisionProxy, dimensions \}/);
+    assert.match(source, /return \{ root, bodyGroup, wheels, steeringWheels, collisionProxy, dimensions, interior \}/);
     assert.match(source, /forwardAxis = "-Z"/);
   });
 
@@ -108,6 +108,122 @@ if (THREE.error) {
     assert.equal(car.root.userData.forwardAxis, "-Z");
     assert.equal(car.root.userData.upAxis, "+Y");
     assert.ok(car.steeringWheels[0].position.z < car.wheels[2].position.z);
+  });
+
+  test("cockpit compartilha o carro, oculta vidro e teto apenas na câmera interna, mãos acompanham volante", () => {
+    for (const profile of ["Apex", "GrandTourer", "HyperWedge"]) {
+      const car = createSportsCar(THREE, { profile, detailLevel: "high" });
+      const { root, steeringWheel, driverHands, speedNeedle, rpmNeedle, displayMesh, displayTexture, mirrorSurface, eyeOffset, occluders } = car.interior;
+      assert.strictEqual(root.parent, car.root);
+      assert.equal(root.visible, false);
+      assert.strictEqual(steeringWheel.parent, root);
+      assert.ok(eyeOffset.isVector3);
+      assert.equal(eyeOffset.x, -0.18);
+      assert.ok(eyeOffset.z - steeringWheel.position.z > 0.9);
+      assert.ok(eyeOffset.y > steeringWheel.position.y);
+      assert.ok(occluders.includes(car.bodyGroup));
+      assert.ok(occluders.includes(car.wheels[0]));
+      assert.ok(occluders.includes(car.wheels[2]));
+      assert.ok(occluders.some((mesh) => mesh.name === "suspension"));
+      assert.ok(occluders.every((mesh) => mesh.parent === car.root));
+      assert.ok(!occluders.includes(car.root));
+      assert.ok(!occluders.includes(car.root.getObjectByName("cockpit-interior")));
+      assert.ok(occluders.every((mesh) => mesh.visible));
+      assert.strictEqual(speedNeedle.parent, root);
+      assert.equal(speedNeedle.rotation.z, 2.1);
+      assert.ok(speedNeedle.position.y > steeringWheel.position.y);
+      assert.strictEqual(rpmNeedle.parent, root);
+      assert.strictEqual(rpmNeedle, root.getObjectByName("cockpit-rpm-needle"));
+      assert.strictEqual(displayMesh, root.getObjectByName("cockpit-center-display"));
+      assert.strictEqual(displayMesh.material.map, displayTexture);
+      assert.strictEqual(displayMesh.userData.canvas, displayTexture?.image ?? null);
+      assert.ok(root.getObjectByName("cockpit-instrument-panel").scale.y <= 1.1);
+      const dashboard = root.getObjectByName("cockpit-dashboard");
+      const lowerConsole = root.getObjectByName("cockpit-lower-console");
+      const instrumentPanel = root.getObjectByName("cockpit-instrument-panel");
+      assert.equal(dashboard.geometry.type, "CylinderGeometry");
+      assert.equal(instrumentPanel.geometry.type, "CapsuleGeometry");
+      assert.equal(lowerConsole.geometry.type, "CylinderGeometry");
+      for (const panel of [dashboard, lowerConsole, instrumentPanel]) {
+        const panelBounds = new THREE.Box3().setFromObject(panel);
+        assert.ok(panelBounds.min.x >= -0.76 && panelBounds.max.x <= 0.76,
+          `${panel.name} excede a largura útil da cabine`);
+        assert.ok(panelBounds.min.y > 0.40 && panelBounds.max.y < 1.10,
+          `${panel.name} invade a estrada ou o para-brisa`);
+      }
+      assert.ok(new THREE.Box3().setFromObject(lowerConsole).max.y > new THREE.Box3().setFromObject(dashboard).min.y);
+      assert.ok(new THREE.Box3().setFromObject(dashboard).max.y > new THREE.Box3().setFromObject(instrumentPanel).min.y);
+      assert.ok(root.getObjectByName("cockpit-center-display").scale.x > 0.7);
+      assert.ok(displayMesh.position.x > 0 && displayMesh.position.z > -0.5);
+      assert.ok(root.getObjectByName("cockpit-speed-needle-tip").scale.y < 0.25);
+      assert.ok(root.getObjectByName("cockpit-speed-tick-8"));
+      assert.ok(root.getObjectByName("cockpit-gauge-tick-1-8"));
+      assert.equal(root.getObjectByName("cockpit-dashboard-top"), undefined);
+      assert.equal(root.getObjectByName("cockpit-roof-liner"), undefined);
+      assert.ok(root.getObjectByName("cockpit-rearview-bezel"));
+      speedNeedle.rotation.z = -2.1;
+      assert.equal(speedNeedle.rotation.z, -2.1);
+      assert.strictEqual(mirrorSurface.parent, root);
+      assert.equal(mirrorSurface.material.color.getHex(), 0xffffff);
+      assert.ok(mirrorSurface.geometry.getAttribute("uv"));
+      assert.equal(mirrorSurface.geometry.parameters.width, 0.36);
+      assert.equal(mirrorSurface.geometry.parameters.height, 0.10);
+      const leftHand = steeringWheel.getObjectByName("driver-hand-left");
+      const rightHand = steeringWheel.getObjectByName("driver-hand-right");
+      assert.ok(leftHand && rightHand);
+      assert.strictEqual(driverHands.left.parent, steeringWheel);
+      assert.strictEqual(driverHands.right.parent, steeringWheel);
+      assert.equal(driverHands.left.name, "driver-hand-group-left");
+      assert.equal(driverHands.right.name, "driver-hand-group-right");
+      const steeringRim = steeringWheel.getObjectByName("steering-wheel-rim");
+      assert.ok(steeringRim.scale.x > steeringRim.scale.y * 1.5);
+      assert.ok(leftHand.position.y > 0.1 && rightHand.position.y > 0.1);
+      assert.ok(root.getObjectByName("cockpit-dial--0.48").position.y < 1);
+      assert.ok(root.getObjectByName("cockpit-dial--0.48").scale.x < 1);
+      assert.ok(root.getObjectByName("cockpit-rpm-needle"));
+      assert.ok(root.getObjectByName("cockpit-gauge-inner--0.48"));
+      assert.ok(steeringWheel.getObjectByName("driver-wrist-left"));
+      assert.ok(steeringWheel.getObjectByName("driver-forearm-left"));
+      assert.equal(steeringWheel.getObjectByName("driver-forearm-left").geometry.type, "CylinderGeometry");
+      assert.ok(steeringWheel.getObjectByName("driver-forearm-left").geometry.parameters.height < 0.1);
+      assert.ok(steeringWheel.getObjectByName("driver-forearm-left").geometry.parameters.radialSegments >= 16);
+      assert.equal(leftHand.geometry.type, "CylinderGeometry");
+      assert.ok(leftHand.geometry.parameters.radialSegments >= 16);
+      assert.deepEqual(steeringWheel.position.toArray(), [-0.35, 0.77, -0.42]);
+      assert.deepEqual(speedNeedle.position.toArray(), [-0.48, 0.97, -0.46]);
+      assert.notEqual(root.getObjectByName("cockpit-dashboard").material.roughness,
+        root.getObjectByName("cockpit-instrument-panel").material.roughness);
+      assert.ok(root.getObjectByName("cockpit-instrument-panel").material.metalness
+        > root.getObjectByName("cockpit-dashboard").material.metalness);
+      steeringWheel.rotation.z = 0.48;
+      steeringWheel.updateMatrixWorld(true);
+      const turned = leftHand.getWorldPosition(new THREE.Vector3());
+      steeringWheel.rotation.z = -0.48;
+      steeringWheel.updateMatrixWorld(true);
+      const opposite = leftHand.getWorldPosition(new THREE.Vector3());
+      assert.ok(turned.distanceTo(opposite) > 0.1);
+      assert.strictEqual(leftHand.parent, driverHands.left);
+      assert.strictEqual(rightHand.parent, driverHands.right);
+      assert.strictEqual(steeringWheel.getObjectByName("driver-finger--1-0").parent, driverHands.left);
+      assert.strictEqual(steeringWheel.getObjectByName("driver-forearm-right").parent, driverHands.right);
+      assertFiniteModel(THREE, car);
+    }
+  });
+
+  test("ocultação interna cobre carroceria, rodas e suspensão sem afetar pivôs", () => {
+    const car = createSportsCar(THREE, { detailLevel: "high" });
+    const { root, steeringWheel, occluders } = car.interior;
+    car.interior.root.visible = true;
+    for (const object of occluders) object.visible = false;
+    assert.ok(occluders.length >= 4);
+    assert.ok(occluders.every((object) => !object.visible));
+    assert.equal(car.interior.root.visible, true);
+    assert.deepEqual(steeringWheel.position.toArray(), [-0.35, 0.77, -0.42]);
+    assertFiniteModel(THREE, car);
+    for (const object of occluders) object.visible = true;
+    assert.ok(occluders.every((object) => object.visible));
+    assert.strictEqual(steeringWheel.parent, car.interior.root);
+    assert.strictEqual(car.interior.root.parent, car.root);
   });
 
   test("silhueta, transforms e buffers permanecem finitos dentro das dimensões declaradas", () => {

@@ -127,12 +127,27 @@ test("aceleração, frenagem e derrapagem controlam seus canais", async () => {
 
   const gains = context.nodes.filter((node) => node instanceof FakeGain);
   assert.ok(gains[1].gain.value > 0); // Motor com aceleração.
-  assert.ok(gains[2].gain.value > 0); // Pneus em derrapagem.
-  assert.ok(gains[3].gain.value > 0); // Frenagem.
+  assert.ok(gains[2].gain.value > 0); // Harmônico do motor.
+  assert.ok(gains[3].gain.value > 0); // Pneus em derrapagem.
+  assert.ok(gains[4].gain.value > 0); // Frenagem.
 
   audio.update({ speed: 30, throttle: 0, brake: 0, drift: 0 });
-  assert.equal(gains[2].gain.value, 0);
   assert.equal(gains[3].gain.value, 0);
+  assert.equal(gains[4].gain.value, 0);
+});
+
+test("síntese usa ondas suaves, ganhos baixos e transições graduais", async () => {
+  const fixture = audioFixture();
+  await fixture.audio.unlock();
+  fixture.audio.update({ speed: 72, throttle: 1, brake: 1, drift: 1 });
+  const { nodes } = fixture.context;
+  const oscillators = nodes.filter((node) => node instanceof FakeOscillator);
+  const gains = nodes.filter((node) => node instanceof FakeGain);
+
+  assert.deepEqual(oscillators.map((node) => node.type), ["triangle", "sine", "triangle", "sine"]);
+  assert.equal(gains[0].gain.value, 0.5);
+  assert.ok(gains.slice(1, 5).every((node) => node.gain.value <= 0.08));
+  assert.ok(oscillators.every((node) => node.frequency.events.at(-1).constant >= 0.08));
 });
 
 test("só emite colisão por evento explícito e cobre eventos de corrida", async () => {
@@ -150,6 +165,11 @@ test("só emite colisão por evento explícito e cobre eventos de corrida", asyn
     assert.equal(audio.emit(event), true);
   }
   assert.equal(oscillatorCount(), continuousOscillators + 4);
+  const effects = context.nodes.filter((node) => node instanceof FakeOscillator).slice(continuousOscillators);
+  assert.ok(effects.every((node) => node.type === "sine" && node.frequency.value <= 600));
+  const envelopes = context.nodes.filter((node) => node instanceof FakeGain).slice(5);
+  assert.ok(envelopes.every((node) => node.gain.events[1].value <= 0.08));
+  assert.ok(envelopes.every((node) => node.gain.events[1].time - node.gain.events[0].time >= 0.044));
 });
 
 test("pause silencia e resume restaura o estado mais recente", async () => {
@@ -165,8 +185,27 @@ test("pause silencia e resume restaura o estado mais recente", async () => {
   audio.update({ speed: 65, throttle: 0.9 });
   assert.equal(master.gain.value, 0);
   assert.equal(await audio.resume(), true);
-  assert.equal(master.gain.value, 0.65);
+  assert.equal(master.gain.value, 0.5);
   assert.equal(context.resumeCount, 2);
+});
+
+test("volume ajusta efeitos antes e depois do unlock e sobrevive à pausa", async () => {
+  const fixture = audioFixture();
+  const { audio } = fixture;
+  assert.equal(audio.setVolume(0.7), 0.7);
+  await audio.unlock();
+  const master = fixture.context.nodes.find((node) => node instanceof FakeGain);
+  assert.ok(Math.abs(master.gain.value - 0.35) < 1e-9);
+
+  assert.equal(audio.setVolume(0.25), 0.25);
+  assert.ok(Math.abs(master.gain.value - 0.125) < 1e-9);
+  audio.pause();
+  assert.equal(audio.setVolume(1.5), 1);
+  assert.equal(master.gain.value, 0);
+  await audio.resume();
+  assert.equal(master.gain.value, 0.5);
+  assert.equal(audio.setVolume(-1), 0);
+  assert.equal(master.gain.value, 0);
 });
 
 test("dispose libera nodes, fecha o contexto e é idempotente", async () => {

@@ -17,6 +17,20 @@ test("steer sign produces the requested world direction", () => {
   assert.ok(left.x < 0 && left.yaw > 0);
 });
 
+test("direção arcade gira em baixa velocidade, mantém ré e contorna curva fechada", () => {
+  const config = { maxSteeringAngle: 0.55, maxLateralAccelerationMps2: 90, minimumSteeringSpeedMps: 6 };
+  const parado = stepVehicle(createVehicleState(), { steer: 1 }, 0.5, config);
+  const re = stepVehicle(createVehicleState({ speedMps: -3 }), { steer: 1 }, 0.2, config);
+  assert.ok(parado.yaw < -0.4 && Math.abs(parado.x) < 1e-8 && Math.abs(parado.z) < 1e-8);
+  assert.ok(re.yaw > 0 && re.z > 0);
+
+  const curva = createVehicleState({ speedMps: 32 });
+  const acelerando = stepVehicle(curva, { steer: 1, throttle: 1 }, 0.5, config);
+  const semAcelerar = stepVehicle(curva, { steer: 1 }, 0.5, config);
+  assert.ok(acelerando.yaw < -1 && acelerando.x > 0);
+  assert.ok(semAcelerar.yaw < -1 && semAcelerar.x > 0);
+});
+
 test("braking crosses zero consistently and continues into reverse", () => {
   const moving = createVehicleState({ speedMps: 9 });
   const stopped = stepVehicle(moving, { brake: 1 }, 0.5);

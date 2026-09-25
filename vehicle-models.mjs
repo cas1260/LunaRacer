@@ -345,6 +345,21 @@ function createWheelSpokesGeometry(THREE, count, width, depth, twist) {
   return geometry;
 }
 
+function createFlattenedTorusGeometry(THREE, radius, tube, radialSegments, tubularSegments) {
+  const source = new THREE.TorusGeometry(radius, tube, radialSegments, tubularSegments).toNonIndexed();
+  const sourcePositions = source.getAttribute("position");
+  const positions = [];
+  for (let vertex = 0; vertex < sourcePositions.count; vertex += 1) {
+    positions.push(sourcePositions.getX(vertex), sourcePositions.getY(vertex), sourcePositions.getZ(vertex) * 0.44);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
 function createGeometrySet(THREE, detailLevel, profileIndex) {
   const detail = DETAIL_CONFIG[detailLevel];
   const profile = VEHICLE_PROFILES[profileIndex];
@@ -401,6 +416,19 @@ function createGeometrySet(THREE, detailLevel, profileIndex) {
     doorHandle: cached(geometryCache, "door-handle", () => new THREE.BoxGeometry(0.075, 0.035, 0.18)),
     sideAccent: cached(geometryCache, "side-accent", () => new THREE.BoxGeometry(0.028, 0.045, 1.18)),
     rearVent: cached(geometryCache, "rear-deck-vent", () => new THREE.BoxGeometry(0.11, 0.025, 0.34)),
+    cockpitRim: cached(geometryCache, "cockpit-rim", () => createFlattenedTorusGeometry(THREE, 0.185, 0.022, 8, 32)),
+    cockpitGauge: cached(geometryCache, "cockpit-gauge", () => new THREE.TorusGeometry(0.105, 0.009, 6, 24)),
+    cockpitHand: cached(geometryCache, "cockpit-hand", () => new THREE.CylinderGeometry(0.050, 0.043, 0.10, 16)),
+    cockpitFinger: cached(geometryCache, "cockpit-finger", () => new THREE.CylinderGeometry(0.018, 0.018, 0.052, 12)),
+    cockpitForearm: cached(geometryCache, "cockpit-forearm", () => new THREE.CylinderGeometry(0.022, 0.032, 0.075, 16)),
+    cockpitHub: cached(geometryCache, "cockpit-hub", () => new THREE.SphereGeometry(0.065, 16, 8)),
+    cockpitDial: cached(geometryCache, "cockpit-dial", () => new THREE.CircleGeometry(0.102, 24)),
+    cockpitBinnacle: cached(geometryCache, "cockpit-binnacle", () => new THREE.TorusGeometry(0.275, 0.042, 8, 24, Math.PI)),
+    cockpitMirror: cached(geometryCache, "cockpit-mirror", () => new THREE.PlaneGeometry(0.36, 0.10)),
+    cockpitDashboard: cached(geometryCache, "cockpit-dashboard", () => new THREE.CylinderGeometry(1, 0.94, 1, 16, 1)),
+    cockpitInstrumentPanel: cached(geometryCache, "cockpit-instrument-panel", () => new THREE.CapsuleGeometry(0.145, 0.75, 4, 8)),
+    cockpitGaugeInner: cached(geometryCache, "cockpit-gauge-inner", () => new THREE.TorusGeometry(0.086, 0.006, 6, 24)),
+    cockpitMirrorBezel: cached(geometryCache, "cockpit-mirror-bezel", () => new THREE.TorusGeometry(0.20, 0.018, 6, 24)),
   };
 }
 
@@ -463,6 +491,14 @@ function createMaterials(THREE, paintHex, liveryIndex) {
         metalness: 0.12,
         roughness: 0.20,
       }),
+      cockpitLeather: new THREE.MeshStandardMaterial({ color: 0x151b22, metalness: 0.08, roughness: 0.66 }),
+      cockpitScreen: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x0b7073, emissiveIntensity: 0.17, roughness: 0.22 }),
+      cockpitGlove: new THREE.MeshStandardMaterial({ color: 0x27323a, metalness: 0.03, roughness: 0.76 }),
+      cockpitSleeve: new THREE.MeshStandardMaterial({ color: 0x151e25, metalness: 0.08, roughness: 0.88 }),
+      cockpitCarbon: new THREE.MeshStandardMaterial({ color: 0x10191f, metalness: 0.33, roughness: 0.56 }),
+      cockpitMetal: new THREE.MeshPhysicalMaterial({ color: 0x83949d, metalness: 0.90, roughness: 0.16, clearcoat: 0.35 }),
+      cockpitBezel: new THREE.MeshStandardMaterial({ color: 0x050b10, metalness: 0.76, roughness: 0.24 }),
+      cockpitMirrorBezel: new THREE.MeshStandardMaterial({ color: 0x07131b, metalness: 0.86, roughness: 0.20 }),
     };
   });
 }
@@ -478,6 +514,68 @@ function addMesh(THREE, parent, geometry, material, name, position = null, rotat
   mesh.receiveShadow = true;
   parent.add(mesh);
   return mesh;
+}
+
+function createCockpitDisplayTexture(THREE) {
+  if (typeof THREE.CanvasTexture !== "function") return null;
+  const canvas = typeof OffscreenCanvas === "function"
+    ? new OffscreenCanvas(256, 64)
+    : typeof document !== "undefined" ? Object.assign(document.createElement("canvas"), { width: 256, height: 64 }) : null;
+  if (!canvas) return null;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.fillStyle = "#061a21";
+  context.fillRect(0, 0, 256, 64);
+  context.fillStyle = "#17e6e2";
+  context.font = "bold 33px monospace";
+  context.fillText("SPEED", 10, 38);
+  context.font = "bold 13px monospace";
+  context.fillText("KM/H", 111, 25);
+  context.fillText("RPM", 111, 45);
+  context.fillStyle = "#8efff8";
+  context.fillRect(10, 49, 88, 3);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createCockpitGaugeTexture(THREE, label) {
+  if (typeof THREE.CanvasTexture !== "function") return null;
+  const canvas = typeof OffscreenCanvas === "function"
+    ? new OffscreenCanvas(128, 128)
+    : typeof document !== "undefined" ? Object.assign(document.createElement("canvas"), { width: 128, height: 128 }) : null;
+  if (!canvas) return null;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  context.fillStyle = "#06151b";
+  context.fillRect(0, 0, 128, 128);
+  context.strokeStyle = "#72fff4";
+  context.lineWidth = 2;
+  for (let tick = 0; tick <= 8; tick += 1) {
+    const angle = -2.15 + tick * 4.30 / 8;
+    const inner = 48;
+    const outer = tick % 2 === 0 ? 59 : 54;
+    context.beginPath();
+    context.moveTo(64 + Math.sin(angle) * inner, 64 - Math.cos(angle) * inner);
+    context.lineTo(64 + Math.sin(angle) * outer, 64 - Math.cos(angle) * outer);
+    context.stroke();
+  }
+  context.fillStyle = "#e3fffb";
+  context.font = "bold 13px monospace";
+  context.textAlign = "center";
+  const scale = label === "KM/H" ? ["0", "80", "160"] : ["0", "4", "8"];
+  for (const [index, angle] of [-2.15, 0, 2.15].entries()) {
+    const value = scale[index];
+    context.fillText(value, 64 + Math.sin(angle) * 36, 69 - Math.cos(angle) * 36);
+  }
+  context.font = "bold 9px monospace";
+  context.fillStyle = "#5ce2de";
+  context.fillText(label, 64, 91);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function addWheels(THREE, root, geometry, materials, detailLevel) {
@@ -673,6 +771,126 @@ function addLights(THREE, bodyGroup, geometry, materials) {
   bodyGroup.add(rearLights);
 }
 
+function addCockpitBar(THREE, root, geometry, material, name, start, end, thickness = 0.065) {
+  const from = new THREE.Vector3(...start);
+  const to = new THREE.Vector3(...end);
+  const direction = to.clone().sub(from);
+  const bar = addMesh(THREE, root, geometry.windowFrame, material, name,
+    from.add(to).multiplyScalar(0.5).toArray(), null,
+    [thickness / 0.065, direction.length() / 0.34, thickness / 0.075]);
+  bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  return bar;
+}
+
+function addCockpit(THREE, root, geometry, materials, bodySurface) {
+  const interiorRoot = new THREE.Group();
+  interiorRoot.name = "cockpit-interior";
+  interiorRoot.visible = false;
+  root.add(interiorRoot);
+  const displayTexture = createCockpitDisplayTexture(THREE);
+  if (displayTexture) {
+    materials.cockpitScreen.map = displayTexture;
+    materials.cockpitScreen.needsUpdate = true;
+  }
+
+  addMesh(THREE, interiorRoot, geometry.cockpitDashboard, materials.cockpitLeather, "cockpit-lower-console", [0, 0.70, -0.82], null, [0.22, 0.10, 0.12]);
+  addMesh(THREE, interiorRoot, geometry.cockpitDashboard, materials.cockpitLeather, "cockpit-dashboard", [0, 0.78, -0.83], null, [0.43, 0.12, 0.15]);
+  addMesh(THREE, interiorRoot, geometry.cockpitInstrumentPanel, materials.cockpitCarbon,
+    "cockpit-instrument-panel", [-0.20, 0.94, -0.60], [0, 0, Math.PI / 2], [1, 1, 0.20]);
+  addMesh(THREE, interiorRoot, geometry.cockpitBinnacle, materials.cockpitLeather,
+    "cockpit-instrument-hood", [-0.35, 0.80, -0.67], null, [0.91, 0.76, 1.03]);
+  const displayMesh = addMesh(THREE, interiorRoot, geometry.headlight, materials.cockpitScreen,
+    "cockpit-center-display", [0.16, 0.87, -0.43], null, [0.72, 0.95, 0.25]);
+  displayMesh.userData.canvas = displayTexture?.image ?? null;
+  for (const [gaugeIndex, gaugeX] of [-0.48, -0.23].entries()) {
+    const gaugeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const gaugeTexture = createCockpitGaugeTexture(THREE, gaugeIndex === 0 ? "KM/H" : "x1000");
+    if (gaugeTexture) {
+      gaugeMaterial.map = gaugeTexture;
+      gaugeMaterial.needsUpdate = true;
+    }
+    addMesh(THREE, interiorRoot, geometry.cockpitDial, gaugeMaterial, `cockpit-dial-${gaugeX}`, [gaugeX, 0.97, -0.51], null, [0.91, 0.91, 1]);
+    addMesh(THREE, interiorRoot, geometry.cockpitGauge, materials.cockpitMetal, `cockpit-gauge-${gaugeX}`, [gaugeX, 0.97, -0.495], null, [0.91, 0.91, 1]);
+    addMesh(THREE, interiorRoot, geometry.cockpitGaugeInner, materials.cockpitBezel,
+      `cockpit-gauge-inner-${gaugeX}`, [gaugeX, 0.97, -0.505], null, [0.74, 0.74, 1]);
+    for (let tick = 0; tick <= 8; tick += 1) {
+      const angle = -2.15 + tick * 4.30 / 8;
+      const tickName = gaugeIndex === 0 ? `cockpit-speed-tick-${tick}` : `cockpit-gauge-tick-${gaugeIndex}-${tick}`;
+      addMesh(THREE, interiorRoot, geometry.windowFrame, materials.cockpitMetal,
+        tickName, [gaugeX + Math.sin(angle) * 0.078, 0.97 + Math.cos(angle) * 0.078, -0.522],
+        [0, 0, -angle], [0.09, 0.045, 0.11]);
+    }
+  }
+  const speedNeedle = new THREE.Group();
+  speedNeedle.name = "cockpit-speed-needle";
+  speedNeedle.position.set(-0.48, 0.97, -0.46);
+  speedNeedle.rotation.z = 2.1;
+  interiorRoot.add(speedNeedle);
+  addMesh(THREE, speedNeedle, geometry.windowFrame, materials.caliper,
+    "cockpit-speed-needle-tip", [0, 0.035, 0], null, [0.14, 0.22, 0.14]);
+  const rpmNeedle = new THREE.Group();
+  rpmNeedle.name = "cockpit-rpm-needle";
+  rpmNeedle.position.set(-0.23, 0.97, -0.46);
+  rpmNeedle.rotation.z = 1.15;
+  interiorRoot.add(rpmNeedle);
+  addMesh(THREE, rpmNeedle, geometry.windowFrame, materials.cockpitMetal,
+    "cockpit-rpm-needle-tip", [0, 0.035, 0], null, [0.14, 0.22, 0.14]);
+
+  for (const side of [-1, 1]) {
+    addCockpitBar(THREE, interiorRoot, geometry, materials.carbon, `cockpit-windscreen-pillar-${side}`,
+      [side * 0.62, 0.86, -1.12], [side * 0.58, 1.26, -1.20], 0.014);
+  }
+  addCockpitBar(THREE, interiorRoot, geometry, materials.carbon, "cockpit-windscreen-header",
+    [-0.58, 1.26, -1.20], [0.58, 1.26, -1.20], 0.015);
+  addCockpitBar(THREE, interiorRoot, geometry, materials.cockpitCarbon, "cockpit-windscreen-base",
+    [-0.62, 0.86, -1.12], [0.62, 0.86, -1.12], 0.014);
+  addMesh(THREE, interiorRoot, geometry.headlight, materials.cockpitMirrorBezel,
+    "cockpit-rearview-housing", [0.24, 1.22, -0.40], null, [0.80, 0.90, 0.65]);
+  addMesh(THREE, interiorRoot, geometry.cockpitMirrorBezel, materials.cockpitMirrorBezel,
+    "cockpit-rearview-bezel", [0.24, 1.22, -0.365], null, [0.94, 0.40, 0.80]);
+  const mirrorSurface = addMesh(THREE, interiorRoot, geometry.cockpitMirror,
+    new THREE.MeshBasicMaterial({ color: 0xffffff }), "cockpit-rearview-surface", [0.24, 1.22, -0.345]);
+  mirrorSurface.castShadow = false;
+  mirrorSurface.receiveShadow = false;
+
+  const steeringWheel = new THREE.Group();
+  steeringWheel.name = "steering-wheel-pivot";
+  steeringWheel.position.set(-0.35, 0.77, -0.42);
+  interiorRoot.add(steeringWheel);
+  const driverHands = {};
+  addMesh(THREE, steeringWheel, geometry.cockpitRim, materials.cockpitMetal, "steering-wheel-rim", null, null, [1.10, 0.63, 1]);
+  addMesh(THREE, steeringWheel, geometry.cockpitHub, materials.cockpitBezel, "steering-wheel-hub", [0, 0, 0.02], [Math.PI / 2, 0, 0]);
+  addMesh(THREE, steeringWheel, geometry.mirror, materials.rimDark, "steering-wheel-emblem", [0, 0, 0.048], null, [0.26, 0.26, 0.12]);
+  for (const side of [-1, 1]) {
+    addCockpitBar(THREE, steeringWheel, geometry, materials.cockpitBezel, `steering-wheel-spoke-${side}`,
+      [side * 0.035, -0.015, 0.01], [side * 0.16, 0.08, 0.01], 0.027);
+    const handGroup = new THREE.Group();
+    handGroup.name = `driver-hand-group-${side < 0 ? "left" : "right"}`;
+    steeringWheel.add(handGroup);
+    driverHands[side < 0 ? "left" : "right"] = handGroup;
+    addMesh(THREE, handGroup, geometry.cockpitHand, materials.cockpitGlove,
+      `driver-hand-${side < 0 ? "left" : "right"}`, [side * 0.178, 0.105, 0.060], [0, 0, side * 0.48], [0.80, 0.82, 0.75]);
+    for (let finger = 0; finger < 3; finger += 1) {
+      addMesh(THREE, handGroup, geometry.cockpitFinger, materials.cockpitGlove,
+        `driver-finger-${side}-${finger}`, [side * (0.155 + finger * 0.023), 0.115, 0.098], [Math.PI / 2, 0, side * 0.30], [0.78, 0.75, 0.78]);
+    }
+    addMesh(THREE, handGroup, geometry.cockpitFinger, materials.cockpitGlove,
+      `driver-thumb-${side < 0 ? "left" : "right"}`, [side * 0.128, 0.073, 0.09], [Math.PI / 2, 0, side * 0.4]);
+    addMesh(THREE, handGroup, geometry.cockpitHand, materials.cockpitGlove,
+      `driver-wrist-${side < 0 ? "left" : "right"}`, [side * 0.18, 0.050, 0.073], [0, 0, side * 0.38], [0.62, 0.55, 0.65]);
+    addMesh(THREE, handGroup, geometry.cockpitForearm, materials.cockpitSleeve,
+      `driver-forearm-${side < 0 ? "left" : "right"}`, [side * 0.18, 0, 0.105], [0.27, 0, side * 0.18]);
+    addMesh(THREE, steeringWheel, geometry.doorHandle, materials.cockpitMetal,
+      `steering-wheel-button-${side}`, [side * 0.113, 0.015, 0.037], null, [0.55, 0.4, 0.31]);
+  }
+  addCockpitBar(THREE, steeringWheel, geometry, materials.carbon, "steering-wheel-lower-spoke",
+    [0, -0.035, 0.01], [0, -0.18, 0.01], 0.04);
+
+  const occluders = root.children.filter((child) => child !== interiorRoot);
+  return { root: interiorRoot, steeringWheel, driverHands, speedNeedle, rpmNeedle, displayMesh, displayTexture, mirrorSurface,
+    eyeOffset: new THREE.Vector3(-0.18, 1.10, 0.55), occluders };
+}
+
 export function createSportsCar(THREE, options = {}) {
   assertThree(THREE);
 
@@ -733,6 +951,7 @@ export function createSportsCar(THREE, options = {}) {
   if (detail.includeMirrors) addMirrors(THREE, bodySurface, geometry, materials);
 
   const wheels = addWheels(THREE, root, geometry, materials, detailLevel);
+  const interior = addCockpit(THREE, root, geometry, materials, bodySurface);
   const steeringWheels = wheels.filter((wheel) => wheel.userData.axle === "front");
   const dimensions = Object.freeze({ ...SPORTS_CAR_DIMENSIONS });
   const collisionProxy = new THREE.Box3(
@@ -744,5 +963,5 @@ export function createSportsCar(THREE, options = {}) {
   root.userData.collisionProxy = collisionProxy;
   root.userData.collisionProxySpace = "root-local; bodyGroup sway envelope ±0.1 radians";
 
-  return { root, bodyGroup, wheels, steeringWheels, collisionProxy, dimensions };
+  return { root, bodyGroup, wheels, steeringWheels, collisionProxy, dimensions, interior };
 }

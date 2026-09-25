@@ -12,7 +12,7 @@
       <div
         id="game-container"
         role="img"
-        aria-label="Pista de corrida 3D. Use W para acelerar, S para frear ou dar ré e A e D para virar."
+        aria-label="Pista de corrida 3D. Use W para acelerar, S para frear ou dar ré, A e D para virar, C para alternar a câmera, Escape para pausar e R para reposicionar."
       ></div>
       <div class="screen-vignette" aria-hidden="true"></div>
 
@@ -83,8 +83,8 @@
           </div>
         </section>
 
-        <p class="device-status"><span class="status-dot" aria-hidden="true"></span><span id="controller-status">TECLADO · GAMEPAD NÃO ATIVO</span></p>
-        <p class="camera-status"><span class="hud-label">CÂMERA</span><output id="camera-value">TRASEIRA</output></p>
+        <p class="device-status"><span class="status-dot" aria-hidden="true"></span><span id="controller-status">TECLADO · GAMEPAD NÃO ATIVO</span><span class="keyboard-shortcuts"><kbd>WASD</kbd> PILOTAR</span></p>
+        <p class="camera-status"><span class="hud-label">CÂMERA</span><span class="keyboard-shortcuts"><kbd>C</kbd></span><output id="camera-value">TRASEIRA</output></p>
 
         <details id="diagnostics-panel" class="diagnostics-panel" hidden>
           <summary>F2 · DIAGNÓSTICO</summary>
@@ -108,8 +108,12 @@ Gamepad e telemetria adicional: indisponíveis nesta integração.</pre>
           <p class="menu-kicker"><span class="status-dot" aria-hidden="true"></span> LUNARACER / INTERLAGOS</p>
           <h1 id="overlay-title">Pronto para<br><span>a largada?</span></h1>
           <p id="overlay-copy" class="menu-copy">16 carros. Três voltas. Complete os checkpoints e dispute a posição.</p>
+          <section class="track-selection" aria-labelledby="track-picker-title">
+            <h2 id="track-picker-title">ESCOLHA A PISTA</h2>
+            <div id="track-picker" role="group" aria-labelledby="track-picker-title"></div>
+          </section>
           <button id="start-button" class="hud-button" type="button" disabled>INICIAR CORRIDA <span aria-hidden="true">↗</span></button>
-          <p class="control-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span class="control-label-pilot">PILOTAR</span><span class="control-help-diagnostics"><span aria-hidden="true">·</span> <kbd>F2</kbd> <span class="control-label-diagnostics">DIAGNÓSTICO</span></span></p>
+          <p class="control-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span class="control-label-pilot">PILOTAR</span><span class="control-help-shortcuts"><kbd>C</kbd> CÂMERA · <kbd>ESC</kbd> PAUSA · <kbd>R</kbd> REPOSICIONAR</span><span class="control-help-diagnostics"><span aria-hidden="true">·</span> <kbd>F2</kbd> <span class="control-label-diagnostics">DIAGNÓSTICO</span></span></p>
         </div>
       </section>
 
@@ -121,7 +125,7 @@ Gamepad e telemetria adicional: indisponíveis nesta integração.</pre>
         <div class="menu-panel hud-angle">
           <p class="menu-kicker">CORRIDA PAUSADA</p>
           <h2 id="pause-title">Pausa</h2>
-          <p class="menu-copy">A corrida e o cronômetro estão pausados.</p>
+          <p class="menu-copy">Pressione ESC para retomar; C alterna a câmera e R reposiciona.</p>
           <button id="resume-button" class="hud-button" type="button">RETOMAR</button>
         </div>
       </section>
@@ -156,6 +160,8 @@ Gamepad e telemetria adicional: indisponíveis nesta integração.</pre>
                 <option value="low">Baixo</option>
                 <option value="medium" selected>Médio</option>
                 <option value="high">Alto</option>
+                <option value="extra-high">Extra Alto</option>
+                <option value="realistic">Realista</option>
               </select>
             </label>
             <label for="track-select">Pista
@@ -167,6 +173,11 @@ Gamepad e telemetria adicional: indisponíveis nesta integração.</pre>
                 <option value="porto-ciano">Porto Ciano</option>
               </select>
             </label>
+            <div class="volume-setting">
+              <label for="effects-volume">Efeitos</label>
+              <output id="effects-volume-value" for="effects-volume">70%</output>
+              <input id="effects-volume" name="effects-volume" type="range" min="0" max="100" step="1" value="70" aria-describedby="effects-volume-value">
+            </div>
           </div>
         </div>
       </details>

@@ -299,6 +299,34 @@ select {
   box-shadow: 0 12px 34px rgb(0 0 0 / 28%), inset 0 0 24px rgb(24 112 129 / 9%);
 }
 
+#race-app[data-camera="4"] .map-panel {
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px));
+  width: 220px;
+  padding: 6px 8px 5px;
+}
+
+#race-app[data-camera="4"] .map-live,
+#race-app[data-camera="4"] .map-legend,
+#race-app[data-camera="4"] .map-footer {
+  display: none;
+}
+
+#race-app[data-camera="4"] .map-heading {
+  min-height: 20px;
+  padding-bottom: 3px;
+}
+
+#race-app[data-camera="4"] .map-heading .hud-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+#race-app[data-camera="4"] .minimap {
+  max-height: 132px;
+  margin: 3px 0 1px;
+}
+
 .map-heading {
   display: flex;
   align-items: center;
@@ -454,6 +482,13 @@ select {
 
 .device-status {
   left: max(22px, env(safe-area-inset-left));
+}
+
+.keyboard-shortcuts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
 }
 
 .camera-status {
@@ -619,6 +654,77 @@ select {
   line-height: 1.5;
 }
 
+.track-selection {
+  display: none;
+  margin: 0 0 14px;
+}
+
+#race-app[data-state="ready"] .track-selection {
+  display: block;
+}
+
+.menu-panel .track-selection h2 {
+  margin: 0 0 8px;
+  color: var(--hud-muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  line-height: 1.25;
+}
+
+#track-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.track-card {
+  display: grid;
+  min-width: 0;
+  min-height: 104px;
+  align-content: center;
+  gap: 4px;
+  padding: 7px;
+  border: 1px solid var(--hud-line);
+  border-bottom-width: 2px;
+  background: rgb(9 31 47 / 94%);
+  color: var(--hud-white);
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.track-card:hover {
+  border-color: var(--hud-cyan);
+  background: #12394b;
+}
+
+.track-card.is-selected,
+.track-card[aria-pressed="true"] {
+  border-color: var(--hud-cyan);
+  background: #16495a;
+  box-shadow: inset 0 0 0 1px rgb(75 217 232 / 25%);
+}
+
+.track-card:focus-visible {
+  outline: 2px solid #c0ffff;
+  outline-offset: 2px;
+}
+
+.track-card-map {
+  display: block;
+  width: 100%;
+  height: 65px;
+  color: var(--hud-cyan);
+}
+
+.track-card-name {
+  overflow: hidden;
+  font: 700 0.75rem/1.2 var(--font-data);
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .control-hint {
   display: flex;
   align-items: center;
@@ -633,6 +739,12 @@ select {
 
 .control-hint > span {
   margin-inline: 3px;
+}
+
+.control-help-shortcuts {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 kbd {
@@ -682,6 +794,7 @@ kbd {
 
 .hud-button:focus-visible,
 .menu-settings select:focus-visible,
+.volume-setting input:focus-visible,
 .diagnostics-panel summary:focus-visible,
 .settings-panel summary:focus-visible {
   outline: 2px solid #c0ffff;
@@ -802,6 +915,37 @@ kbd {
   font-weight: 700;
 }
 
+.volume-setting {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  color: #b5cbd0;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.volume-setting label {
+  display: block;
+  min-width: 0;
+}
+
+.volume-setting output {
+  color: var(--hud-white);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.volume-setting input {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+  accent-color: var(--hud-cyan);
+  cursor: pointer;
+}
+
 .menu-settings select {
   width: 100%;
   min-width: 0;
@@ -840,14 +984,12 @@ kbd {
 #race-app[data-state="ready"] #race-overlay {
   place-items: start center;
   padding-top: max(94px, calc(env(safe-area-inset-top) + 84px));
-  background: transparent;
-  pointer-events: none;
+  background: rgb(3 11 19 / 40%);
 }
 
 #race-app[data-state="ready"] #race-overlay .menu-panel {
-  width: min(360px, calc(100vw - 36px));
+  width: min(720px, calc(100vw - 36px));
   padding: 17px 22px;
-  pointer-events: auto;
 }
 
 #race-app[data-state="ready"] #race-overlay .menu-kicker {
@@ -987,6 +1129,26 @@ kbd {
     padding: 6px 7px 5px;
   }
 
+  #race-app[data-camera="4"] .map-panel {
+    width: min(35vw, 148px);
+  }
+
+  #race-app[data-camera="4"] .map-live,
+  #race-app[data-camera="4"] .map-legend,
+  #race-app[data-camera="4"] .map-footer {
+    display: none;
+  }
+
+  #race-app[data-camera="4"] .map-heading .hud-label {
+    font-size: 0.625rem;
+    letter-spacing: 0;
+  }
+
+  #race-app[data-state="racing"] .map-panel {
+    top: max(225px, calc(env(safe-area-inset-top) + 215px));
+    bottom: auto;
+  }
+
   .map-heading {
     min-height: 20px;
     padding-bottom: 4px;
@@ -1032,9 +1194,13 @@ kbd {
     font-size: 0.75rem;
   }
 
+  .keyboard-shortcuts {
+    display: none;
+  }
+
   .device-status {
     left: max(8px, env(safe-area-inset-left));
-    max-width: min(54vw, 220px);
+    max-width: min(42vw, 164px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1044,6 +1210,18 @@ kbd {
     right: max(8px, env(safe-area-inset-right));
     left: auto;
     transform: none;
+    max-width: min(52vw, 203px);
+  }
+
+  .camera-status .hud-label {
+    display: none;
+  }
+
+  .camera-status output {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .diagnostics-panel {
@@ -1092,6 +1270,20 @@ kbd {
     padding: 12px 18px;
   }
 
+  #track-picker {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .track-card {
+    min-height: 80px;
+    padding: 5px;
+  }
+
+  .track-card-map {
+    height: 48px;
+  }
+
   #race-app[data-state="ready"] #race-overlay .menu-panel h1 {
     font-size: clamp(1.65rem, 7vw, 2.1rem);
   }
@@ -1121,10 +1313,24 @@ kbd {
 }
 
 @media (max-width: 360px) and (orientation: portrait) {
+  #track-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .position-panel {
-    width: 27vw;
-    min-width: 84px;
+    width: 100px;
+    min-width: 0;
     padding-left: 9px;
+    padding-right: 6px;
+  }
+
+  .position-readout {
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  #position-value {
+    font-size: 2rem;
   }
 
   .lap-panel {
@@ -1148,6 +1354,34 @@ kbd {
 }
 
 @media (max-width: 700px) and (orientation: landscape) {
+  #race-app[data-state="ready"] #race-overlay {
+    place-items: start center;
+    padding-top: max(68px, calc(env(safe-area-inset-top) + 58px));
+  }
+
+  #race-app[data-state="ready"] #race-overlay .menu-panel {
+    width: min(600px, calc(100vw - 24px));
+    padding: 10px 14px;
+  }
+
+  #race-app[data-state="ready"] #race-overlay .menu-panel h1 {
+    font-size: 1.5rem;
+  }
+
+  #race-app[data-state="ready"] #race-overlay .menu-copy,
+  #race-app[data-state="ready"] #race-overlay .control-hint {
+    display: none;
+  }
+
+  .track-card {
+    min-height: 76px;
+    padding: 4px;
+  }
+
+  .track-card-map {
+    height: 44px;
+  }
+
   .position-panel,
   .time-panel,
   .lap-panel {
@@ -1266,8 +1500,16 @@ kbd {
   }
 
   #race-app[data-state="ready"] #race-overlay .menu-panel {
-    width: min(250px, calc(100vw - 36px));
+    width: min(620px, calc(100vw - 36px));
     padding: 13px 16px;
+  }
+
+  .track-card {
+    min-height: 75px;
+  }
+
+  .track-card-map {
+    height: 44px;
   }
 
   #race-app[data-state="ready"] #race-overlay .menu-panel h1 {

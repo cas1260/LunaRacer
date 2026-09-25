@@ -58,6 +58,7 @@ function makeTrack({ id, name, sectorGeometry, targetLengthM, difficultyProfiles
     waypoints.push(...(waypoints.length ? points.slice(1) : points));
     sectorWaypointEnds.push(waypoints.length - 1);
   }
+  if (distance(waypoints.at(-1), waypoints[0]) < 1e-7) waypoints.pop();
 
   const denseCount = waypoints.length * CURVE_STEPS_PER_SEGMENT;
   const dense = Array.from({ length: denseCount }, (_, index) =>
@@ -136,7 +137,7 @@ const configurations = [
       { name: "Ferradura", points: [point(420, -340, 7), point(530, -350, 8), point(600, -400, 7), point(590, -455, 5), point(530, -480, 4), point(450, -470, 3)] },
       { name: "Laranjinha", points: [point(450, -470, 3), point(220, -460, 2), point(-40, -450, 1), point(-300, -440), point(-460, -425, -1)] },
       { name: "Pinheirinho", points: [point(-460, -425, -1), point(-550, -450, -2), point(-600, -505, -3), point(-550, -545, -4), point(-400, -550, -4), point(-250, -535, -3), point(-100, -520, -2)] },
-      { name: "Bico de Pato", points: [point(-100, -520, -2), point(-30, -480, -1), point(55, -470), point(125, -500), point(180, -560), point(170, -620), point(210, -670), point(290, -690)] },
+      { name: "Bico de Pato", points: [point(-100, -520, -2), point(-30, -505, -1), point(55, -505), point(125, -520), point(180, -560), point(170, -620), point(210, -670), point(290, -690)] },
       { name: "Mergulho", points: [point(290, -690), point(420, -710, -2), point(560, -700, -7), point(660, -650, -10), point(720, -600, -13)] },
       { name: "Junção", points: [point(720, -600, -13), point(780, -500, -12), point(820, -380, -8), point(820, -220), point(810, -50), point(800, 110, 5)] },
       { name: "Subida aos boxes", points: [point(800, 110, 5), point(790, 260, 9), point(730, 420, 12), point(620, 530, 15), point(400, 580, 14), point(100, 590, 12), point(-220, 590, 8), point(-450, 560, 4), point(-450, 400)] },

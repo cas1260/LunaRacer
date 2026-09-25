@@ -148,7 +148,8 @@ test("preserva offsets iniciais fracionarios nas duas faixas laterais", () => {
     assert.equal(driver.targetLaneOffsetMeters, side * driver.laneWidthMeters);
     const result = updateOpponentDriver(driver, straight);
     assert.equal(result.driver.targetLane, side);
-    assert.ok(Math.abs(result.laneOffsetMeters - side * driver.laneWidthMeters) < 0.02);
+    assert.ok(Math.abs(result.laneOffsetMeters - side * driver.laneWidthMeters)
+      < Math.abs(driver.laneOffsetMeters - side * driver.laneWidthMeters));
 
     const observed = updateOpponentDriver(createOpponentDriver(1), { ...straight, laneOffset });
     assert.equal(observed.driver.targetLane, side);
@@ -405,7 +406,7 @@ test("altera faixa, ultrapassa lider mais lento e volta a acelerar sem teleporte
       trafficAhead,
       laneOffset: vehicle.x / 5.2,
       trackHalfWidthMeters: 5.2,
-      laneWidthMeters: 2.4,
+      laneWidthMeters: 3,
       deltaSeconds: dt,
     });
     const next = stepVehicle(vehicle, decision.controls, dt);
@@ -446,6 +447,58 @@ test("velocidade relativa do caller e usada no sentido documentado", () => {
     "relativeSpeedMps positivo do game.js significa que o lider esta mais lento");
 });
 
+test("trafego real distante nas cinco pistas permite acelerar e trocar para faixa mais rapida", () => {
+  for (const track of TRACK_CONFIGURATIONS) {
+    const distances = [0];
+    for (let index = 1; index <= 7; index += 1) {
+      const previous = track.centerline[index - 1];
+      const point = track.centerline[index];
+      distances.push(distances.at(-1) + Math.hypot(point.x - previous.x, point.z - previous.z));
+    }
+    const easy = track.difficultyProfiles.easy;
+    const hard = track.difficultyProfiles.hard;
+    const driver = createOpponentDriver(track.id, { skill: hard.aiSkill, maxSpeedMps: hard.aiMaxSpeedMps });
+    const trafficAhead = [-1, 0, 1].map((lane, index) => ({
+      lane,
+      gapMeters: distances[[5, 3, 7][index]],
+      relativeSpeedMps: 0,
+    }));
+    const freeFlow = updateOpponentDriver(driver, {
+      ...straight,
+      speedMps: 0,
+      targetSpeedMps: hard.aiMaxSpeedMps,
+      trafficAhead,
+    });
+    assert.ok(freeFlow.controls.throttle > 0, `${track.id}: trafego distante nao deve paralisar largada`);
+
+    const speedMps = hard.aiMaxSpeedMps * 0.65;
+    const overtaking = updateOpponentDriver(driver, {
+      ...straight,
+      speedMps,
+      targetSpeedMps: hard.aiMaxSpeedMps,
+      trafficAhead: trafficAhead.map((car) => ({
+        ...car,
+        relativeSpeedMps: car.lane === 0 ? speedMps - easy.aiMaxSpeedMps * 0.5 : 0,
+      })),
+    });
+    assert.equal(overtaking.targetLane, -1, `${track.id}: lider lento exige ultrapassagem segura`);
+    assert.ok(overtaking.laneOffsetMeters < 0);
+    const rearTraffic = updateOpponentDriver(driver, {
+      ...straight,
+      speedMps,
+      targetSpeedMps: hard.aiMaxSpeedMps,
+      trafficAhead: [
+        ...trafficAhead.map((car) => ({
+          ...car,
+          relativeSpeedMps: car.lane === 0 ? speedMps - easy.aiMaxSpeedMps * 0.5 : 0,
+        })),
+        { lane: -1, gapMeters: -6, relativeSpeedMps: 0 },
+      ],
+    });
+    assert.equal(rearTraffic.targetLane, 1, `${track.id}: nao entra diante de rival proximo atras`);
+  }
+});
+
 test("perfis easy/medium/hard mantem progressao deterministica dentro de cada pista", () => {
   for (const track of TRACK_CONFIGURATIONS) {
     const profiles = ["easy", "medium", "hard"].map((difficulty) => track.difficultyProfiles[difficulty]);
@@ -454,7 +507,7 @@ test("perfis easy/medium/hard mantem progressao deterministica dentro de cada pi
     assert.ok(profiles[0].aiSkill < profiles[1].aiSkill);
     assert.ok(profiles[1].aiSkill < profiles[2].aiSkill);
 
-    const run = (profile) => {
+    const run = (profile, targetSpeedMps = 98) => {
       let driver = createOpponentDriver(track.id, {
         skill: profile.aiSkill,
         maxSpeedMps: profile.aiMaxSpeedMps,
@@ -464,7 +517,7 @@ test("perfis easy/medium/hard mantem progressao deterministica dentro de cada pi
         const decision = updateOpponentDriver(driver, {
           ...straight,
           speedMps: vehicle.speedMps,
-          targetSpeedMps: 98,
+          targetSpeedMps,
           deltaSeconds: 1 / 120,
         });
         driver = decision.driver;
@@ -474,12 +527,18 @@ test("perfis easy/medium/hard mantem progressao deterministica dentro de cada pi
       return vehicle.speedMps;
     };
 
-    const speeds = profiles.map(run);
+    const speeds = profiles.map((profile) => run(profile));
     assert.ok(speeds[0] <= profiles[0].aiMaxSpeedMps + 0.1);
     assert.ok(speeds[1] <= profiles[1].aiMaxSpeedMps + 0.1);
     assert.ok(speeds[2] <= profiles[2].aiMaxSpeedMps + 0.1);
     assert.ok(speeds[0] < speeds[1] && speeds[1] < speeds[2], `${track.id}: ${speeds.join(", ")}`);
-    assert.deepEqual(speeds, profiles.map(run), `${track.id}: perfis repetidos devem ser deterministas`);
+    assert.deepEqual(speeds, profiles.map((profile) => run(profile)), `${track.id}: perfis repetidos devem ser deterministas`);
+    const start = track.centerline[0];
+    const ahead = track.centerline[3];
+    const realTargetSpeedMps = Math.sqrt(40 * Math.hypot(ahead.x - start.x, ahead.z - start.z));
+    const cornerSpeeds = profiles.map((profile) => run(profile, realTargetSpeedMps));
+    assert.ok(cornerSpeeds[1] - cornerSpeeds[0] > 1.5 && cornerSpeeds[2] - cornerSpeeds[1] > 1.5,
+      `${track.id}: dificuldade deve separar velocidades mesmo quando o trecho limita o maximo`);
   }
 });
 

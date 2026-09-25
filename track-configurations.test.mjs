@@ -3,6 +3,9 @@ import test from "node:test";
 import { TRACK_CONFIGURATIONS } from "./track-configurations.mjs";
 
 const EPSILON = 1e-8;
+const MIN_TRACK_CLEARANCE_M = 22.8;
+const MIN_NON_LOCAL_ROUTE_DISTANCE_M = 70;
+const MIN_VERTICAL_CLEARANCE_M = 4.5;
 
 function distance(a, b) {
   return Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
@@ -69,6 +72,34 @@ function sampleCatmullRom(points, sampleCount = 1536) {
 
 function polylineLength(points) {
   return points.reduce((total, point, index) => total + distance(point, points[(index + 1) % points.length]), 0);
+}
+
+function turnRadius(a, b, c) {
+  const ab = Math.hypot(b.x - a.x, b.z - a.z);
+  const bc = Math.hypot(c.x - b.x, c.z - b.z);
+  const ac = Math.hypot(c.x - a.x, c.z - a.z);
+  const cross = Math.abs((b.x - a.x) * (c.z - b.z) - (b.z - a.z) * (c.x - b.x));
+  return cross ? ab * bc * ac / (2 * cross) : Infinity;
+}
+
+function minimumNonLocalClearance(track) {
+  const samples = sampleCatmullRom(track.centerline);
+  const segmentLengths = samples.map((point, index) => distance(point, samples[(index + 1) % samples.length]));
+  const cumulative = [0];
+  for (const segmentLength of segmentLengths) cumulative.push(cumulative.at(-1) + segmentLength);
+
+  let minimum = { distance: Infinity, first: -1, second: -1, vertical: 0 };
+  for (let first = 0; first < samples.length; first += 1) {
+    for (let second = first + 1; second < samples.length; second += 1) {
+      const routeDistance = cumulative[second] - cumulative[first];
+      if (Math.min(routeDistance, cumulative.at(-1) - routeDistance) < MIN_NON_LOCAL_ROUTE_DISTANCE_M) continue;
+      const vertical = Math.abs(samples[first].y - samples[second].y);
+      if (vertical >= MIN_VERTICAL_CLEARANCE_M) continue;
+      const horizontal = Math.hypot(samples[first].x - samples[second].x, samples[first].z - samples[second].z);
+      if (horizontal < minimum.distance) minimum = { distance: horizontal, first, second, vertical };
+    }
+  }
+  return minimum;
 }
 
 function orientation(a, b, c) {
@@ -161,6 +192,22 @@ test("curvas Catmull-Rom do jogo permanecem fechadas, sem cruzamentos e em escal
     if (track.id === "interlagos") {
       assert.ok(totalLength >= 4300 && totalLength <= 4800, `Interlagos: ${totalLength.toFixed(1)} m`);
     }
+  }
+});
+
+test("emenda de cada circuito não introduz cotovelo por waypoint duplicado", () => {
+  for (const track of TRACK_CONFIGURATIONS) {
+    const points = track.centerline;
+    const radius = turnRadius(points.at(-1), points[0], points[1]);
+    assert.ok(radius >= 25, `${track.id}: raio de ${radius.toFixed(1)} m na emenda`);
+  }
+});
+
+test("corredores Catmull-Rom não se sobrepõem entre trechos não locais", () => {
+  for (const track of TRACK_CONFIGURATIONS) {
+    const clearance = minimumNonLocalClearance(track);
+    assert.ok(clearance.distance >= MIN_TRACK_CLEARANCE_M,
+      `${track.id}: clearance ${clearance.distance.toFixed(2)} m entre amostras ${clearance.first}/${clearance.second}; dy ${clearance.vertical.toFixed(2)} m`);
   }
 });
 

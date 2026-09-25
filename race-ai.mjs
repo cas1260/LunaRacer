@@ -1,6 +1,6 @@
 const LANES = [-1, 0, 1];
 const DEFAULT_TRACK_HALF_WIDTH_METERS = 5.2;
-const DEFAULT_LANE_WIDTH_METERS = 2.4;
+const DEFAULT_LANE_WIDTH_METERS = 3;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const approach = (value, target, maxDelta) => value + clamp(target - value, -maxDelta, maxDelta);
 const smooth = (value, target, rate, deltaSeconds) => target + (value - target) * Math.exp(-rate * deltaSeconds);
@@ -155,21 +155,36 @@ export function updateOpponentDriver(driver, observation) {
   const safeDistanceMeters = Math.max(8, Math.abs(speedMps) * 1.2 + (speedMps * speedMps) / 36 + 8);
   const relevantTraffic = trafficAhead?.filter((traffic) => traffic.gapMeters >= 0
     && traffic.gapMeters < safeDistanceMeters && isTrafficAhead(traffic, trackProgress)) ?? [];
+  const nearbyDistanceMeters = Math.max(12, Math.abs(speedMps) * 0.25);
   const occupiedLanes = trafficAhead === undefined
     ? blockedLanes
-    : [...new Set(relevantTraffic.map(({ lane }) => lane))];
+    : [...new Set(trafficAhead.filter((traffic) => traffic.gapMeters >= -8
+      && traffic.gapMeters < nearbyDistanceMeters
+      && (traffic.gapMeters < 0
+        ? traffic.lane !== currentLane : isTrafficAhead(traffic, trackProgress)))
+      .map(({ lane }) => lane))];
   const availableLanes = LANES.filter((lane) => isLanePathClear(currentLane, lane, occupiedLanes));
+  const lead = relevantTraffic.filter((traffic) => traffic.lane === occupiedLane)
+    .sort((a, b) => a.gapMeters - b.gapMeters)[0];
 
   const requestedTargetLane = observedTargetLane ?? observedLaneTarget;
   let targetLane = laneChangeActive || requestedTargetLane === undefined ? driver.targetLane : requestedTargetLane;
-  let targetLaneOffsetMeters = laneChangeActive || requestedTargetLane === undefined
-    ? driver.targetLaneOffsetMeters
-    : targetLane * laneWidthMeters;
+  let targetLaneOffsetMeters = laneChangeActive ? driver.targetLaneOffsetMeters : targetLane * laneWidthMeters;
   if (!laneChangeActive && observedLaneOffset !== undefined
     && targetLane === laneIndex(driver.laneOffset)
     && laneIndex(observedLaneOffset) !== laneIndex(driver.laneOffset)) {
     targetLane = laneIndex(observedLaneOffset);
     targetLaneOffsetMeters = targetLane * laneWidthMeters;
+  }
+  if (!laneChangeActive && trafficAhead !== undefined && lead && (lead.relativeSpeedMps ?? 0) > 2) {
+    const passingLane = availableLanes.filter((lane) => lane !== currentLane
+      && !relevantTraffic.some((traffic) => traffic.lane === lane
+        && traffic.gapMeters < lead.gapMeters + 8))
+      .sort((a, b) => Math.abs(a - currentLane) - Math.abs(b - currentLane) || a - b)[0];
+    if (passingLane !== undefined) {
+      targetLane = passingLane;
+      targetLaneOffsetMeters = targetLane * laneWidthMeters;
+    }
   }
   if (availableLanes.length) {
     const preferredLane = targetLane;
@@ -201,15 +216,11 @@ export function updateOpponentDriver(driver, observation) {
   const nextLaneOffset = clamp(settledLaneOffsetMeters / trackHalfWidthMeters, -1, 1);
 
   let desiredSpeed = Math.min(driver.maxSpeedMps, targetSpeedMps)
-    * (0.94 + driver.skill * 0.06)
-    * (1 - curveSharpness * (0.68 - driver.skill * 0.04));
-  let blockingLaneSpeedMps = null;
+    * (0.72 + driver.skill * 0.28)
+    * (1 - curveSharpness * (0.72 - driver.skill * 0.16));
   if (trafficAhead !== undefined) {
-    const lead = relevantTraffic.filter((traffic) => traffic.lane === occupiedLane)
-      .sort((a, b) => a.gapMeters - b.gapMeters)[0];
     if (lead) {
       const leadSpeedMps = Math.max(0, speedMps - (lead.relativeSpeedMps ?? 0));
-      blockingLaneSpeedMps = leadSpeedMps;
       const minimumGapMeters = Math.max(7, Math.max(0, speedMps) * 0.25);
       const gapSpeedMps = leadSpeedMps + Math.sqrt(12 * Math.max(0, lead.gapMeters - minimumGapMeters));
       desiredSpeed = Math.min(desiredSpeed, Math.max(0, gapSpeedMps));

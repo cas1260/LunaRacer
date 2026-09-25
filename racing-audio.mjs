@@ -5,12 +5,14 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
   let context = null;
   let master = null;
   let engineGain = null;
+  let harmonicGain = null;
   let tireGain = null;
   let brakeGain = null;
   let engineOscillator = null;
   let harmonicOscillator = null;
   let tireOscillator = null;
   let brakeOscillator = null;
+  let masterVolume = 1;
   let unlocked = false;
   let paused = false;
   let disposed = false;
@@ -28,7 +30,7 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
     return node;
   }
 
-  function setParam(param, value, timeConstant = 0.035) {
+  function setParam(param, value, timeConstant = 0.08) {
     if (typeof param.setTargetAtTime === "function") {
       param.setTargetAtTime(value, context.currentTime, timeConstant);
     } else {
@@ -37,47 +39,51 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
   }
 
   function setOutput(value) {
-    if (master) setParam(master.gain, value);
+    if (master) setParam(master.gain, value * masterVolume);
   }
 
   function applyState() {
     if (!unlocked || paused || disposed) return;
     const speedRatio = clamp(Math.abs(state.speed) / maxSpeedMps);
-    setParam(engineOscillator.frequency, 42 + speedRatio * 165 + state.throttle * 24);
-    setParam(harmonicOscillator.frequency, 84 + speedRatio * 330 + state.throttle * 48);
-    setParam(engineGain.gain, 0.12 + state.throttle * 0.07);
-    setParam(tireOscillator.frequency, 700 + state.drift * 900);
-    setParam(tireGain.gain, state.drift * 0.055);
-    setParam(brakeOscillator.frequency, 150 + state.brake * 180);
-    setParam(brakeGain.gain, state.brake * 0.045);
+    setParam(engineOscillator.frequency, 55 + speedRatio * 120 + state.throttle * 18);
+    setParam(harmonicOscillator.frequency, 110 + speedRatio * 240 + state.throttle * 36);
+    setParam(engineGain.gain, 0.045 + state.throttle * 0.03);
+    setParam(harmonicGain.gain, 0.008 + state.throttle * 0.012);
+    setParam(tireOscillator.frequency, 260 + state.drift * 300);
+    setParam(tireGain.gain, state.drift * 0.018);
+    setParam(brakeOscillator.frequency, 120 + state.brake * 70);
+    setParam(brakeGain.gain, state.brake * 0.014);
   }
 
   function createEngine() {
     master = makeNode(context.createGain);
-    master.gain.value = paused ? 0 : 0.65;
+    master.gain.value = paused ? 0 : 0.5 * masterVolume;
     master.connect(context.destination);
 
     engineGain = makeNode(context.createGain);
     engineGain.gain.value = 0;
     engineGain.connect(master);
     engineOscillator = makeNode(context.createOscillator);
-    engineOscillator.type = "sawtooth";
-    engineOscillator.frequency.value = 42;
+    engineOscillator.type = "triangle";
+    engineOscillator.frequency.value = 55;
     engineOscillator.connect(engineGain);
     engineOscillator.start();
 
+    harmonicGain = makeNode(context.createGain);
+    harmonicGain.gain.value = 0;
+    harmonicGain.connect(master);
     harmonicOscillator = makeNode(context.createOscillator);
-    harmonicOscillator.type = "triangle";
-    harmonicOscillator.frequency.value = 84;
-    harmonicOscillator.connect(engineGain);
+    harmonicOscillator.type = "sine";
+    harmonicOscillator.frequency.value = 110;
+    harmonicOscillator.connect(harmonicGain);
     harmonicOscillator.start();
 
     tireGain = makeNode(context.createGain);
     tireGain.gain.value = 0;
     tireGain.connect(master);
     tireOscillator = makeNode(context.createOscillator);
-    tireOscillator.type = "sawtooth";
-    tireOscillator.frequency.value = 700;
+    tireOscillator.type = "triangle";
+    tireOscillator.frequency.value = 260;
     tireOscillator.connect(tireGain);
     tireOscillator.start();
 
@@ -85,13 +91,13 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
     brakeGain.gain.value = 0;
     brakeGain.connect(master);
     brakeOscillator = makeNode(context.createOscillator);
-    brakeOscillator.type = "triangle";
-    brakeOscillator.frequency.value = 150;
+    brakeOscillator.type = "sine";
+    brakeOscillator.frequency.value = 120;
     brakeOscillator.connect(brakeGain);
     brakeOscillator.start();
   }
 
-  function emitTone({ frequency, endFrequency = frequency, duration, amplitude, type = "triangle" }) {
+  function emitTone({ frequency, endFrequency = frequency, duration, amplitude, type = "sine" }) {
     if (!unlocked || paused || disposed) return false;
     const oscillator = makeNode(context.createOscillator);
     const envelope = makeNode(context.createGain);
@@ -100,7 +106,7 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
     oscillator.frequency.setValueAtTime(frequency, now);
     oscillator.frequency.linearRampToValueAtTime(endFrequency, now + duration);
     envelope.gain.setValueAtTime(0, now);
-    envelope.gain.linearRampToValueAtTime(amplitude, now + 0.012);
+    envelope.gain.linearRampToValueAtTime(amplitude, now + Math.min(0.045, duration * 0.25));
     envelope.gain.linearRampToValueAtTime(0, now + duration);
     oscillator.connect(envelope);
     envelope.connect(master);
@@ -144,6 +150,13 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
     return true;
   }
 
+  function setVolume(value) {
+    if (disposed) return false;
+    masterVolume = clamp(finiteOrZero(value));
+    setOutput(paused ? 0 : 0.5);
+    return masterVolume;
+  }
+
   function emit(event) {
     const type = typeof event === "string" ? event : event?.type;
     switch (type) {
@@ -151,18 +164,18 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
       case "countdown-started":
       case "countdown-tick": {
         const count = typeof event === "object" && Number.isFinite(event.count) ? event.count : 0;
-        return emitTone({ frequency: 560 + clamp(count, 0, 3) * 55, duration: 0.12, amplitude: 0.16 });
+        return emitTone({ frequency: 330 + clamp(count, 0, 3) * 30, duration: 0.18, amplitude: 0.04 });
       }
       case "green-flag":
-        return emitTone({ frequency: 880, duration: 0.28, amplitude: 0.2 });
+        return emitTone({ frequency: 420, endFrequency: 530, duration: 0.36, amplitude: 0.06 });
       case "checkpoint":
       case "checkpoint-passed":
-        return emitTone({ frequency: 740, endFrequency: 990, duration: 0.18, amplitude: 0.18 });
+        return emitTone({ frequency: 350, endFrequency: 490, duration: 0.3, amplitude: 0.045 });
       case "collision":
-        return emitTone({ frequency: 150, endFrequency: 48, duration: 0.24, amplitude: 0.32, type: "sine" });
+        return emitTone({ frequency: 110, endFrequency: 55, duration: 0.3, amplitude: 0.08 });
       case "finish":
       case "race-finished":
-        return emitTone({ frequency: 660, endFrequency: 990, duration: 0.55, amplitude: 0.2 });
+        return emitTone({ frequency: 420, endFrequency: 600, duration: 0.55, amplitude: 0.055 });
       default:
         return false;
     }
@@ -179,7 +192,7 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
     if (disposed || !context) return Promise.resolve(false);
     return Promise.resolve(context.resume()).then(() => {
       paused = false;
-      setOutput(0.65);
+      setOutput(0.5);
       applyState();
       return true;
     });
@@ -202,5 +215,5 @@ export function createRacingAudio({ AudioContext: AudioContextConstructor, maxSp
     return disposePromise;
   }
 
-  return { unlock, update, emit, pause, resume, dispose };
+  return { unlock, update, emit, setVolume, pause, resume, dispose };
 }
